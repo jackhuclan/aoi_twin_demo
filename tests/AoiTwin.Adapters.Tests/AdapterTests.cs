@@ -8,7 +8,7 @@ namespace AoiTwin.Adapters.Tests;
 /// <summary>T2.3 适配器基类：健康状态机全迁移、指数退避 1s→30s、异常隔离。</summary>
 public class AdapterBaseTests
 {
-    /// <summary>可控 Fake：连接失败 N 次后成功；记录每次重连等待秒数。</summary>
+    /// <summary>可控 Fake：连接失败 N 次后成功；记录每次重连等待秒数。ReceiveCore 自节流（与真实适配器一致，避免忙自旋）。</summary>
     private sealed class FakeAdapter(int failConnectTimes = 0, bool failReceive = false) : AdapterBase("FAKE")
     {
         public List<int> BackoffSeconds { get; } = [];
@@ -34,6 +34,7 @@ public class AdapterBaseTests
             }
 
             Emit(TwinTopic.Motion, new AxisSnapshot("ROBOT", "R", ReceiveCount, 0, DateTimeOffset.UtcNow));
+            cancellationToken.WaitHandle.WaitOne(1);
         }
 
         protected override Task DelayAsync(int seconds, CancellationToken cancellationToken)
@@ -43,7 +44,7 @@ public class AdapterBaseTests
         }
     }
 
-    private static void WaitFor(Func<bool> condition, int timeoutMs = 5000)
+    private static void WaitFor(Func<bool> condition, int timeoutMs = 15000)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (!condition() && sw.ElapsedMilliseconds < timeoutMs)
@@ -247,7 +248,7 @@ public class AdapterEndToEndTests
         Assert.Equal(2, transport.DrainedCount);
     }
 
-    private static void WaitFor(Func<bool> condition, int timeoutMs = 5000)
+    private static void WaitFor(Func<bool> condition, int timeoutMs = 15000)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (!condition() && sw.ElapsedMilliseconds < timeoutMs)

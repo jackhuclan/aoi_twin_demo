@@ -294,7 +294,7 @@ public class RingBufferTests
     }
 
     [Fact]
-    public void Concurrent_produce_consume_no_loss()
+    public async Task Concurrent_produce_consume_no_loss()
     {
         var ring = new RingBuffer<int>(1024);
         const int producers = 4;
@@ -323,8 +323,8 @@ public class RingBufferTests
             }))
             .ToArray();
 
-        Task.WaitAll(producerTasks);
-        consumer.Wait(TimeSpan.FromSeconds(30));
+        await Task.WhenAll(producerTasks);
+        await consumer.WaitAsync(TimeSpan.FromSeconds(30));
         Assert.Equal(producers * perProducer, consumed);
         Assert.Equal(0, ring.Count);
     }
