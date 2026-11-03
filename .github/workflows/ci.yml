@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build (0 warning 0 error baseline)
+        run: dotnet build AoiTwin.slnx -c Release --nologo
+
+      - name: Test
+        run: dotnet test AoiTwin.slnx -c Release --no-build --nologo

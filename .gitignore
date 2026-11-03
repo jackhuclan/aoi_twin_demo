@@ -1,0 +1,28 @@
+# Build outputs
+bin/
+obj/
+artifacts/
+release/
+output/
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+
+# Local AI workspace data
+.workbuddy/
+
+# 本地配置（未来含设备凭据/API Key，绝不入库）
+config.json
+
+# 运行时数据
+sessions/
+
+# 大文件：产线录制数据走本地存储 + 清单登记（见 PLAN §7），不入 Git
+assets/recordings/
+
+# Logs
+*.log
+*.binlog

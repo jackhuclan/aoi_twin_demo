@@ -1,0 +1,44 @@
+<Project>
+
+  <!--
+    全解决方案共享的工程元数据（Directory.Build.props 会被目录树下所有 .csproj 自动导入）。
+    发布 / 升级版本时只改这一处：Version 会同时作用到程序集版本与 NuGet 包版本。
+    工程规范沿用 wpf-float-agent 仓库（CPM / .editorconfig / 中文 Conventional Commits）。
+  -->
+  <PropertyGroup>
+
+    <!-- 版本：语义化版本，同时作为 AssemblyVersion / FileVersion / NuGet 包版本 -->
+    <Version>0.1.0</Version>
+
+    <!-- 作者与公司 -->
+    <Authors>jackhuclan</Authors>
+    <Company>jackhuclan</Company>
+
+    <!-- 产品与描述 -->
+    <Product>AoiTwin</Product>
+    <Description>
+      AOI 数字孪生上位机：.NET 10 WPF + HelixToolkit 同进程 3D 场景，
+      设备实时数据总线（RealtimeHub）、录制回放闭环，分期实施（M1：基础建模与数据采集）。
+    </Description>
+
+    <!-- 项目地址 -->
+    <PackageProjectUrl>https://github.com/jackhuclan/aoi_twin_demo</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/jackhuclan/aoi_twin_demo.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- 版权与许可证 -->
+    <Copyright>Copyright © 2026 jackhuclan</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Deterministic>true</Deterministic>
+    <IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
+
+    <!-- 语言基线 -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+  </PropertyGroup>
+
+</Project>
