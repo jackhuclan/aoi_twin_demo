@@ -61,7 +61,15 @@ public abstract class AdapterBase : IDisposable
 
         _started = true;
         SetHealth(AdapterHealth.Connecting);
-        _loop = Task.Run(() => RunLoop(_cts.Token));
+
+        // LongRunning：ReceiveCore 是同步阻塞拉取（WaitOne/设备 API），占用线程直到取消。
+        // 若跑在线程池上，多路适配器会挤占池线程——CI 双核 runner 上曾出现「适配器 3 秒内一帧未产出」，
+        // 真实场景（采集 + UI + 后台任务同机）同样会被拖慢，故每路适配器固定占用一条专用线程。
+        _loop = Task.Factory.StartNew(
+            () => RunLoop(_cts.Token),
+            _cts.Token,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default).Unwrap();
     }
 
     /// <summary>停止适配器并退出重连循环（幂等）。</summary>
