@@ -121,6 +121,19 @@ public class UiSmokeTests
                 Assert.Equal(10, viewport.SceneRoot.Children.Count);
                 ForceLayout(twinView);
 
+                // 点选与台账信息区（T1.8）：列表 10 项、选中详情、清除选中
+                Assert.Equal(10, twin.PartSummaries.Count);
+                twin.SelectPart("WAFER_STAGE");
+                Assert.Equal("WAFER_STAGE", twin.SelectedPartId);
+                Assert.True(twin.SelectedPartLines.Count >= 5, "选中详情行数不足");
+                Assert.Contains("STAGE", twin.SelectionHint);
+                twin.SelectPart(null);
+                Assert.Null(twin.SelectedPartId);
+                Assert.Empty(twin.SelectedPartLines);
+                twin.SelectPart("不存在"); // 未知 PartId 等价于清除
+                Assert.Null(twin.SelectedPartId);
+                ForceLayout(twinView);
+
                 // 视角书签（T1.5）：4 预置 + 保存/持久化/删除，切换时长硬顶 800ms
                 Assert.Equal(4, twin.Bookmarks.Count);
                 Assert.All(twin.Bookmarks, b => Assert.True(b.IsPreset));

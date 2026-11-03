@@ -14,6 +14,7 @@ public partial class TwinView : UserControl
 {
     private bool _loadRequested;
     private TwinSceneViewModel? _viewModel;
+    private Rendering.Interaction.SelectionOutlineFx? _outline;
 
     public TwinView()
     {
@@ -21,6 +22,7 @@ public partial class TwinView : UserControl
         Loaded += OnLoaded;
         DataContextChanged += OnDataContextChanged;
         Viewport.FrameRendered += OnViewportFrame;
+        Viewport.SceneClicked += OnSceneClicked;
     }
 
     /// <summary>视口实例（测试与场景挂载需要编程访问）。</summary>
@@ -30,11 +32,67 @@ public partial class TwinView : UserControl
     private void OnViewportFrame(object? sender, TimeSpan delta)
         => _viewModel?.OnCameraMoved(Viewport.Camera.Position);
 
+    /// <summary>点选（T1.8）：射线求交 → 选中部件（空白处点击 = 清除选中）。</summary>
+    private void OnSceneClicked(object? sender, Point position)
+    {
+        if (_viewModel?.Package is not { } package)
+        {
+            return;
+        }
+
+        var ray = Viewport.RayFrom(position);
+        var hit = BuildPicker(package).Pick(ray.Origin, ray.Direction);
+        _viewModel.SelectPart(hit?.PartId);
+    }
+
+    /// <summary>
+    /// 组装拾取集合：LOD1 全保真几何 + 部件节点当前的世界变换（M2 运动后点选仍然准确）。
+    /// 每次点击重建（10 个条目的构建成本远低于维护失效状态的复杂度）。
+    /// </summary>
+    private Rendering.Interaction.PartPicker BuildPicker(AoiTwin.Rendering.Lod.LodPackage package)
+    {
+        var parts = package.PickParts.Select(part =>
+        {
+            var motion = _viewModel?.Assembly?.Find(part.PartId)?.Motion;
+            var world = motion?.Value ?? System.Windows.Media.Media3D.Matrix3D.Identity;
+            return new Rendering.Interaction.PickPart(part.PartId, part.Geometry, world);
+        });
+
+        return new Rendering.Interaction.PartPicker(parts);
+    }
+
+    /// <summary>选中变化 → 描边跟随（LOD2 档也用 LOD1 几何描边，保证轮廓完整）。</summary>
+    private void OnSelectionChanged(object? sender, string? partId)
+    {
+        if (_outline is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrEmpty(partId))
+        {
+            _outline.Clear();
+            return;
+        }
+
+        var part = _viewModel?.Package?.Near.Find(partId);
+        if (part is null)
+        {
+            _outline.Clear();
+            return;
+        }
+
+        var motion = _viewModel?.Assembly?.Find(partId)?.Motion;
+        var world = motion?.Value ?? System.Windows.Media.Media3D.Matrix3D.Identity;
+        _outline.Show(part.Geometry, world);
+    }
+
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (_viewModel is not null)
         {
             _viewModel.BookmarkRequested -= OnBookmarkRequested;
+            _viewModel.SelectionChanged -= OnSelectionChanged;
         }
 
         _viewModel = e.NewValue as TwinSceneViewModel;
@@ -42,6 +100,10 @@ public partial class TwinView : UserControl
         if (_viewModel is not null)
         {
             _viewModel.BookmarkRequested += OnBookmarkRequested;
+            _viewModel.SelectionChanged += OnSelectionChanged;
+
+            // 叠加层跟随视图生命周期重建
+            _outline = new Rendering.Interaction.SelectionOutlineFx(Viewport.OverlayRoot);
         }
     }
 

@@ -69,8 +69,17 @@ public sealed partial class TwinSceneViewModel : ObservableObject
     /// <summary>两档场景包：LOD1 全保真（点选用）+ LOD2 合批代理（远档渲染用）。</summary>
     public LodPackage? Package { get; private set; }
 
+    /// <summary>当前装配树（LOD 切换时重建；拾取变换与状态栏使用）。</summary>
+    public SceneAssembly? Assembly { get; private set; }
+
     /// <summary>当前生效的 LOD 档位。</summary>
     public LodLevel ActiveLod => _lodSelector.Current;
+
+    /// <summary>部件列表（台账信息区左列，T1.8）。</summary>
+    public ObservableCollection<PartSummary> PartSummaries { get; } = [];
+
+    /// <summary>选中部件的详情行（键值文本）。</summary>
+    public ObservableCollection<string> SelectedPartLines { get; } = [];
 
     /// <summary>视角书签（预置 + 自定义），下拉框数据源。</summary>
     public ObservableCollection<CameraBookmark> Bookmarks { get; } = [];
@@ -112,6 +121,21 @@ public sealed partial class TwinSceneViewModel : ObservableObject
     /// <summary>书签操作提示（保存成功/重名/上限淘汰等一行反馈）。</summary>
     [ObservableProperty]
     private string _bookmarkHint = "预置 4 视角 · 自定义书签保存在本机";
+
+    /// <summary>部件列表当前选中项（列表双向绑定）。</summary>
+    [ObservableProperty]
+    private PartSummary? _selectedPartSummary;
+
+    /// <summary>当前选中的 PartId（空 = 未选中）。</summary>
+    [ObservableProperty]
+    private string? _selectedPartId;
+
+    /// <summary>选中部件的详情标题。</summary>
+    [ObservableProperty]
+    private string _selectionHint = "点击 3D 模型或在列表中选择部件";
+
+    /// <summary>选中对象变化（视图据此更新描边；partId 为空表示清除）。</summary>
+    public event EventHandler<string?>? SelectionChanged;
 
     /// <summary>LOD 模式（自动/锁定近档/锁定远档）。</summary>
     [ObservableProperty]
@@ -228,6 +252,15 @@ public sealed partial class TwinSceneViewModel : ObservableObject
         ProgressPercent = 100;
         HasScene = true;
 
+        // 台账列表（T1.8）：PartId 顺序与台账一致
+        PartSummaries.Clear();
+        foreach (var part in package.Near.Parts)
+        {
+            PartSummaries.Add(new PartSummary(part.PartId, part.Entry.Name));
+        }
+
+        SelectPart(null);
+
         StatusText = $"{package.Near.Machine} 已装配：{package.Near.Parts.Count} 部件 · {package.Near.TotalTriangles:N0} 三角面（LOD1）";
         DetailText = $"资产包 v{package.Near.AssetVersion} · LOD1 {package.MeshCount(LodLevel.L1)} 网格 / LOD2 {package.MeshCount(LodLevel.L2)} 网格 · 加载 {package.Near.LoadElapsed.TotalMilliseconds:F0} ms";
     }
@@ -239,16 +272,74 @@ public sealed partial class TwinSceneViewModel : ObservableObject
             return;
         }
 
-        if (level == LodLevel.L1)
-        {
-            SceneTreeBuilder.Build(package.Near, root);
-        }
-        else
-        {
-            SceneTreeBuilder.BuildProxies(package.Proxies, root);
-        }
+        Assembly = level == LodLevel.L1
+            ? SceneTreeBuilder.Build(package.Near, root)
+            : SceneTreeBuilder.BuildProxies(package.Proxies, root);
 
         OnPropertyChanged(nameof(ActiveLod));
+    }
+
+    /// <summary>
+    /// 选中部件（T1.8）。空/未知的 PartId 视为清除选中（3D 空白处点击也是这个语义）。
+    /// </summary>
+    public void SelectPart(string? partId)
+    {
+        SelectedPartSummary = string.IsNullOrEmpty(partId)
+            ? null
+            : PartSummaries.FirstOrDefault(p => string.Equals(p.PartId, partId, StringComparison.Ordinal));
+
+        ApplySelection(SelectedPartSummary?.PartId);
+    }
+
+    partial void OnSelectedPartSummaryChanged(PartSummary? value)
+    {
+        // 列表驱动与 SelectPart 驱动汇合到同一入口；重复选中不重复刷新
+        if (!string.Equals(value?.PartId, SelectedPartId, StringComparison.Ordinal))
+        {
+            ApplySelection(value?.PartId);
+        }
+    }
+
+    private void ApplySelection(string? partId)
+    {
+        SelectedPartId = partId;
+
+        SelectedPartLines.Clear();
+        if (string.IsNullOrEmpty(partId))
+        {
+            SelectionHint = "点击 3D 模型或在列表中选择部件";
+            SelectionChanged?.Invoke(this, null);
+            return;
+        }
+
+        var part = Package?.Near.Find(partId);
+        if (part is null)
+        {
+            SelectionHint = "点击 3D 模型或在列表中选择部件";
+            SelectionChanged?.Invoke(this, null);
+            return;
+        }
+
+        var entry = part.Entry;
+        var bounds = part.Geometry.Bounds;
+        SelectionHint = $"{entry.PartId} · {entry.Name}";
+
+        SelectedPartLines.Add($"模块：{entry.Module}");
+        SelectedPartLines.Add($"型号：{entry.Model}");
+        SelectedPartLines.Add($"运动轴：{FormatAxes(entry.Axes)}");
+        SelectedPartLines.Add($"三角面：{part.TriangleCount:N0}（LOD1）");
+        SelectedPartLines.Add($"包围盒：{bounds.SizeX:F2} × {bounds.SizeY:F2} × {bounds.SizeZ:F2} m");
+        SelectedPartLines.Add($"资产：{entry.Lod?.L1 ?? "—"}");
+        SelectionChanged?.Invoke(this, partId);
+    }
+
+    private static string FormatAxes(IReadOnlyList<string> axes)
+        => axes.Count == 0 ? "固定" : string.Join(" / ", axes);
+
+    /// <summary>部件列表条目（台账信息区）。</summary>
+    public sealed record PartSummary(string PartId, string Name)
+    {
+        public string Display => $"{PartId}  {Name}";
     }
 
     private void UpdateLodText()
@@ -268,7 +359,10 @@ public sealed partial class TwinSceneViewModel : ObservableObject
         HasError = true;
         HasScene = false;
         Package = null;
+        Assembly = null;
         ProgressPercent = 0;
+        PartSummaries.Clear();
+        SelectPart(null);
         SceneTreeBuilder.Clear(sceneRoot);
         StatusText = "场景加载失败";
         DetailText = reason;

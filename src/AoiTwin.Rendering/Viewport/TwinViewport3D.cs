@@ -120,7 +120,39 @@ public sealed class TwinViewport3D : UserControl
 
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+
+        // 点选（T1.8）：按下/抬起位移小于阈值才算点击（避免与旋转手势冲突）
+        Viewport.PreviewMouseLeftButtonDown += (_, e) => _mouseDownPoint = e.GetPosition(Viewport);
+        Viewport.PreviewMouseLeftButtonUp += OnPreviewMouseUp;
     }
+
+    private Point? _mouseDownPoint;
+
+    private void OnPreviewMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_mouseDownPoint is not { } down)
+        {
+            return;
+        }
+
+        _mouseDownPoint = null;
+        var up = e.GetPosition(Viewport);
+        var drag = (up - down).Length;
+        if (drag < 4)
+        {
+            SceneClicked?.Invoke(this, up);
+        }
+    }
+
+    /// <summary>把视口内一点转换为世界射线（T1.8 点选入口；拾取判定由 PartPicker 完成）。</summary>
+    public Ray3D RayFrom(Point position)
+    {
+        var ray = Viewport3DHelper.Point2DtoRay3D(Viewport.Viewport, position);
+        return ray ?? throw new InvalidOperationException("无法从视口坐标构造射线（相机或布局未就绪）");
+    }
+
+    /// <summary>用户在视口内完成一次点击（拖拽手势不触发）；坐标为视口客户区坐标。</summary>
+    public event EventHandler<Point>? SceneClicked;
 
     /// <summary>Helix 视口本体（相机手势、视图立方体、坐标轴均由其内置）。</summary>
     public HelixViewport3D Viewport { get; }
