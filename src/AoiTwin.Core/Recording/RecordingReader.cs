@@ -182,7 +182,7 @@ public static class RecordingReader
 
                 if (onMessage is not null)
                 {
-                    var message = Deserialize(typeId, topic, payload, tsMs);
+                    var message = DeserializeFrame(typeId, payload);
                     onMessage(message);
                 }
 
@@ -287,7 +287,80 @@ public static class RecordingReader
         stream.Seek(offset + count, SeekOrigin.Begin);
     }
 
-    private static Bus.ITwinMessage Deserialize(byte typeId, Bus.TwinTopic topic, byte[] payload, long tsMs)
+    /// <summary>
+    /// 构建帧索引（回放引擎 T3.1）：CRC 校验通过的帧的文件偏移/时间戳/Topic/类型。
+    /// 遇到非法或 CRC 失败的帧即停止（索引只覆盖有效前缀，与 Inspect 的逐帧跳过策略不同——
+    /// 回放要求序列连续可比较，中间缺失帧应整体暴露而不是静默跳过）。
+    /// </summary>
+    public static IReadOnlyList<FrameIndexEntry> BuildIndex(string filePath)
+    {
+        var entries = new List<FrameIndexEntry>();
+        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+
+        // ---- 跳过文件头 ----
+        Span<byte> magic = stackalloc byte[8];
+        stream.ReadExactly(magic);
+        if (!magic.SequenceEqual(RecFileFormat.FileMagic))
+        {
+            throw new InvalidDataException("文件头 magic 不符");
+        }
+
+        stream.Seek(4, SeekOrigin.Current); // version
+        var devLen = BinaryPrimitives.ReadUInt16LittleEndian(reader.ReadBytes(2));
+        stream.Seek(devLen, SeekOrigin.Current);
+        var shiftLen = BinaryPrimitives.ReadUInt16LittleEndian(reader.ReadBytes(2));
+        stream.Seek(shiftLen, SeekOrigin.Current);
+        stream.Seek(8, SeekOrigin.Current); // startUnixMs
+        var headerEnd = stream.Position;
+
+        // ---- 帧区终点：有合法 Footer 则为其起始，否则为文件长度 ----
+        var fileLength = stream.Length;
+        var framesEnd = fileLength;
+        if (fileLength >= RecFileFormat.FooterSize)
+        {
+            stream.Seek(fileLength - RecFileFormat.FooterSize, SeekOrigin.Begin);
+            Span<byte> footerMagic = stackalloc byte[8];
+            stream.ReadExactly(footerMagic);
+            if (footerMagic.SequenceEqual(RecFileFormat.FooterMagic))
+            {
+                framesEnd = fileLength - RecFileFormat.FooterSize;
+            }
+        }
+
+        // ---- 逐帧索引 ----
+        stream.Seek(headerEnd, SeekOrigin.Begin);
+        while (stream.Position + RecFileFormat.FrameHeaderSize <= framesEnd)
+        {
+            var offset = stream.Position;
+            var header = reader.ReadBytes(RecFileFormat.FrameHeaderSize);
+            var payloadLen = BinaryPrimitives.ReadUInt32LittleEndian(header);
+            if (payloadLen == 0 || payloadLen > RecFileFormat.MaxPayloadLength
+                || stream.Position + payloadLen > framesEnd)
+            {
+                break;
+            }
+
+            var expectedCrc = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(4));
+            var payload = reader.ReadBytes((int)payloadLen);
+            if (Crc32.Final(Crc32.Compute(payload)) != expectedCrc)
+            {
+                break;
+            }
+
+            entries.Add(new FrameIndexEntry(
+                offset,
+                BinaryPrimitives.ReadInt64LittleEndian(header.AsSpan(12)),
+                (Bus.TwinTopic)header[8],
+                header[9],
+                (int)payloadLen));
+        }
+
+        return entries;
+    }
+
+    /// <summary>按帧类型反序列化 payload（帧头时间戳为权威，JSON 内时间戳冗余，偏差由 T3.5 校验工具报告）。</summary>
+    public static Bus.ITwinMessage DeserializeFrame(byte typeId, byte[] payload)
     {
         Bus.ITwinMessage? message = typeId switch
         {
@@ -298,13 +371,8 @@ public static class RecordingReader
             _ => null,
         };
 
-        if (message is null)
-        {
-            throw new InvalidDataException($"帧 typeId={typeId} topic={topic} 反序列化失败");
-        }
-
-        // 帧头时间戳为权威（回放时钟基准）；JSON 内时间戳冗余，二者偏差由一致性校验工具（T3.5）报告。
-        return message;
+        return message
+            ?? throw new InvalidDataException($"帧 typeId={typeId} 反序列化失败");
     }
 
     private static AotrecFileInfo BuildInfo(
