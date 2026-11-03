@@ -35,6 +35,29 @@ public class UiSmokeTests
                 var hub = new RealtimeHub();
                 var replay = new ReplayViewModel(hub);
                 var recordings = new RecordingManagerViewModel(_ => false);
+                using var monitor = new CollectionMonitorViewModel(hub);
+
+                // 采集页（T2.5）：启动四路 Mock → 真实计数/速率/健康状态经绑定刷新
+                Assert.False(monitor.IsRunning);
+                Assert.Equal(4, monitor.Sources.Count);
+                Assert.Equal(4, monitor.Topics.Count);
+                monitor.StartCommand.Execute(null);
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                while (!monitor.IsRunning
+                    || !monitor.Sources.All(s => s.IsConnected)
+                    || monitor.Topics.Sum(t => t.Count) < 6)
+                {
+                    Thread.Sleep(50);
+                    monitor.Refresh();
+                    Assert.True(sw.ElapsedMilliseconds < 20000, "Mock 采集未在 20s 内产出数据");
+                }
+
+                Assert.Equal("采集中", monitor.RunStateText);
+                Assert.All(monitor.Sources, s => Assert.True(s.MessageCount > 0, $"{s.Name} 无计数"));
+                Assert.All(monitor.Sources, s => Assert.Equal("已连接", s.HealthText));
+                Assert.True(monitor.DiskPercent is >= 0 and <= 100);
+                monitor.StopCommand.Execute(null);
+                Assert.Equal("已停止", monitor.RunStateText);
 
                 // 用真实录制文件驱动一次加载（批次列表/时间轴/详情区全部走绑定）
                 var file = BuildRecording(dir);
@@ -51,7 +74,10 @@ public class UiSmokeTests
                 var managerView = new RecordingManagerView { DataContext = recordings };
                 ForceLayout(managerView);
 
-                var main = new MainViewModel(replay, recordings);
+                var monitorView = new CollectionMonitorView { DataContext = monitor };
+                ForceLayout(monitorView);
+
+                var main = new MainViewModel(monitor, replay, recordings);
                 var window = new global::AoiTwin.App.MainWindow(main);
                 Assert.Same(main, window.DataContext);
 

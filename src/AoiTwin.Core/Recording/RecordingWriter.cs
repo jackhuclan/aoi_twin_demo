@@ -37,6 +37,9 @@ public sealed class RecordingWriter : IDisposable
     private readonly FileStream?[] _fileSlot = new FileStream?[1];
     private IncrementalHash? _sha;
     private long _frameCount;
+    private long _totalFrameCount;
+    private long _droppedFrameCount;
+    private long _totalBytes;
     private DateTimeOffset _fileStart;
     private bool _disposed;
 
@@ -56,6 +59,15 @@ public sealed class RecordingWriter : IDisposable
 
     /// <summary>当前写入中的文件完整路径（无活动文件时为 null）。</summary>
     public string? CurrentFilePath { get; private set; }
+
+    /// <summary>累计已写入帧数（含班次滚动前的文件）。采集监控面板 T2.5 实时展示。</summary>
+    public long TotalFrameCount => Interlocked.Read(ref _totalFrameCount);
+
+    /// <summary>因磁盘水位被丢弃的帧数（上层环形缓冲保压，PRD §5.5）。</summary>
+    public long DroppedFrameCount => Interlocked.Read(ref _droppedFrameCount);
+
+    /// <summary>累计落盘字节数（帧头 + payload + Footer），用于面板显示写盘量。</summary>
+    public long TotalBytesWritten => Interlocked.Read(ref _totalBytes);
 
     /// <summary>磁盘水位触发事件（录制监控告警）。</summary>
     public event EventHandler? DiskWatermarkPaused;
@@ -84,6 +96,7 @@ public sealed class RecordingWriter : IDisposable
                     DiskWatermarkPaused?.Invoke(this, EventArgs.Empty);
                 }
 
+                Interlocked.Increment(ref _droppedFrameCount);
                 return false;
             }
 
@@ -111,6 +124,8 @@ public sealed class RecordingWriter : IDisposable
             stream.Write(header);
             stream.Write(payload);
             _frameCount++;
+            Interlocked.Increment(ref _totalFrameCount);
+            Interlocked.Add(ref _totalBytes, header.Length + payload.Length);
             return true;
         }
     }
@@ -149,25 +164,8 @@ public sealed class RecordingWriter : IDisposable
 
     private bool IsOverDiskWatermark()
     {
-        var used = _options.DiskUsedRatioProvider?.Invoke() ?? MeasureDiskUsedRatio();
+        var used = _options.DiskUsedRatioProvider?.Invoke() ?? DiskSpace.UsedRatio(_options.Directory);
         return used > _options.DiskUsedWatermark;
-    }
-
-    private double MeasureDiskUsedRatio()
-    {
-        var root = Path.GetPathRoot(Path.GetFullPath(_options.Directory));
-        if (string.IsNullOrEmpty(root))
-        {
-            return 0;
-        }
-
-        var drive = new DriveInfo(root);
-        if (!drive.IsReady || drive.TotalSize == 0)
-        {
-            return 0;
-        }
-
-        return (double)(drive.TotalSize - drive.AvailableFreeSpace) / drive.TotalSize;
     }
 
     private void EnsureFile(DateTimeOffset timestamp)
@@ -192,6 +190,7 @@ public sealed class RecordingWriter : IDisposable
         _sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         _sha.AppendData(header.AsSpan(0, headerLen));
         stream.Write(header, 0, headerLen);
+        Interlocked.Add(ref _totalBytes, headerLen);
         _fileSlot[0] = stream;
         _frameCount = 0;
     }
@@ -235,6 +234,7 @@ public sealed class RecordingWriter : IDisposable
             BinaryPrimitives.WriteUInt64LittleEndian(footer[16..], (ulong)_frameCount);
             _sha!.GetCurrentHash(footer[24..]);
             stream.Write(footer);
+            Interlocked.Add(ref _totalBytes, footer.Length);
         }
         finally
         {

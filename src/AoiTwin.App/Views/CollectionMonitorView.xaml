@@ -1,0 +1,318 @@
+﻿<UserControl x:Class="AoiTwin.App.Views.CollectionMonitorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:AoiTwin.App.Converters"
+             xmlns:vm="clr-namespace:AoiTwin.App.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DataContext="{d:DesignInstance Type=vm:CollectionMonitorViewModel}"
+             mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- 健康指示灯：仅看两个布尔，避免 DataTrigger 直接比枚举字符串 -->
+        <Style x:Key="HealthDot" TargetType="Ellipse">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Fill" Value="{StaticResource TextMutedBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                    <Setter Property="Fill" Value="{StaticResource OkBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsReconnecting}" Value="True">
+                    <Setter Property="Fill" Value="{StaticResource WarnBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ColumnHeader" TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        </Style>
+
+        <Style x:Key="FieldLabel" TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+            <Setter Property="Margin" Value="0,0,0,3" />
+        </Style>
+
+        <Style x:Key="FieldValue" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ===== 工具栏 ===== -->
+        <Border Style="{StaticResource Card}" Padding="12,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="启动采集" Style="{StaticResource AccentButton}" Command="{Binding StartCommand}" />
+                    <Button Content="停止采集" Style="{StaticResource ToolButton}" Margin="8,0,0,0"
+                            Command="{Binding StopCommand}" />
+                    <Button Content="{Binding RecordingStateText, StringFormat=录制：{0}}"
+                            Style="{StaticResource ToolButton}" Margin="8,0,0,0" MinWidth="96"
+                            Command="{Binding ToggleRecordingCommand}"
+                            ToolTip="开始/停止录制（写入 .aotrec，停止时落 Footer 可校验）" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Margin="18,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DataSourceText}" FontSize="12.5" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding RecordingDirectoryText, StringFormat=录制目录：{0}}"
+                               Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Margin="0,0,18,0">
+                        <TextBlock Text="运行状态" Style="{StaticResource ColumnHeader}" />
+                        <TextBlock Text="{Binding RunStateText}" Style="{StaticResource FieldValue}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,18,0">
+                        <TextBlock Text="已运行" Style="{StaticResource ColumnHeader}" />
+                        <TextBlock Text="{Binding ElapsedText}" Style="{StaticResource FieldValue}"
+                                   FontFamily="{StaticResource MonoFont}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="总吞吐" Style="{StaticResource ColumnHeader}" />
+                        <TextBlock Text="{Binding AggregateRateText}" Style="{StaticResource FieldValue}"
+                                   FontFamily="{StaticResource MonoFont}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== 告警条（单源故障 / 磁盘水位） ===== -->
+        <Border Grid.Row="1" Margin="0,10,0,0" CornerRadius="4" Padding="12,8"
+                Background="#2A2110" BorderBrush="{StaticResource WarnBrush}" BorderThickness="1"
+                Visibility="{Binding HasAlarm, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="⚠" Foreground="{StaticResource WarnBrush}" FontSize="13" Margin="0,1,8,0" />
+                <TextBlock Text="{Binding AlarmText}" Foreground="{StaticResource WarnBrush}"
+                           TextWrapping="Wrap" MaxWidth="1080" />
+            </StackPanel>
+        </Border>
+
+        <!-- ===== 主体：数据源状态 + Topic 吞吐 ===== -->
+        <Grid Grid.Row="2" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.15*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Style="{StaticResource Card}" Padding="14,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="数据源状态" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Sources.Count, StringFormat=（{0} 路）}"
+                                   Style="{StaticResource CaptionText}" VerticalAlignment="Center" Margin="6,2,0,0" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="1" Margin="0,10,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="" Width="18" />
+                        <TextBlock Grid.Column="1" Text="数据源 / 传输" Style="{StaticResource ColumnHeader}" />
+                        <TextBlock Grid.Column="2" Text="累计帧" Style="{StaticResource ColumnHeader}"
+                                   Width="86" TextAlignment="Right" />
+                        <TextBlock Grid.Column="3" Text="速率" Style="{StaticResource ColumnHeader}"
+                                   Width="92" TextAlignment="Right" />
+                        <TextBlock Grid.Column="4" Text="最近" Style="{StaticResource ColumnHeader}"
+                                   Width="86" TextAlignment="Right" />
+                    </Grid>
+
+                    <ItemsControl Grid.Row="2" ItemsSource="{Binding Sources}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="0,7">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Width="18" VerticalAlignment="Center">
+                                            <Ellipse Style="{StaticResource HealthDot}" HorizontalAlignment="Left" />
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" FontFamily="{StaticResource MonoFont}"
+                                                       FontSize="12.5" />
+                                            <TextBlock Text="{Binding HealthText}" Style="{StaticResource CaptionText}"
+                                                       VerticalAlignment="Center" Margin="8,1,0,0" />
+                                        </StackPanel>
+
+                                        <TextBlock Grid.Column="2" Text="{Binding CountText}" Width="86"
+                                                   TextAlignment="Right" Style="{StaticResource MonoText}" />
+                                        <TextBlock Grid.Column="3" Text="{Binding RateText}" Width="92"
+                                                   TextAlignment="Right" Style="{StaticResource MonoText}"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                        <TextBlock Grid.Column="4" Text="{Binding LastText}" Width="86"
+                                                   TextAlignment="Right" Style="{StaticResource MonoText}"
+                                                   Foreground="{StaticResource TextMutedBrush}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="10,0,0,0" Padding="14,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Topic 吞吐" FontWeight="SemiBold" />
+                        <TextBlock Text="（Hub 发布即计数，录制与回放同口径）"
+                                   Style="{StaticResource CaptionText}" VerticalAlignment="Center" Margin="8,2,0,0" />
+                    </StackPanel>
+
+                    <Grid Grid.Row="1" Margin="0,10,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Topic" Style="{StaticResource ColumnHeader}" />
+                        <TextBlock Grid.Column="1" Text="累计帧" Style="{StaticResource ColumnHeader}"
+                                   Width="96" TextAlignment="Right" />
+                        <TextBlock Grid.Column="2" Text="速率" Style="{StaticResource ColumnHeader}"
+                                   Width="96" TextAlignment="Right" />
+                    </Grid>
+
+                    <ItemsControl Grid.Row="2" ItemsSource="{Binding Topics}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Padding="0,7">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="12.5" />
+                                        <TextBlock Grid.Column="1" Text="{Binding CountText}" Width="96"
+                                                   TextAlignment="Right" Style="{StaticResource MonoText}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding RateText}" Width="96"
+                                                   TextAlignment="Right" Style="{StaticResource MonoText}"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Grid.Row="3" Text="{Binding TotalMessagesText}"
+                               Style="{StaticResource CaptionText}" Margin="0,10,0,0" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ===== 录制与磁盘 ===== -->
+        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="14,12" Margin="0,10,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.4*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="1.1*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="1.4*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="录制状态" Style="{StaticResource FieldLabel}" />
+                    <TextBlock Style="{StaticResource FieldValue}">
+                        <Run Text="{Binding RecordingStateText, Mode=OneWay}" />
+                        <Run Text="·" Foreground="{StaticResource TextMutedBrush}" />
+                        <Run Text="{Binding RecordingFramesText, Mode=OneWay}" />
+                    </TextBlock>
+                </StackPanel>
+
+                <Border Grid.Column="1" Width="1" Background="{StaticResource LineBrush}" Margin="16,2" />
+
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="当前 / 最近文件" Style="{StaticResource FieldLabel}" />
+                    <TextBlock Text="{Binding RecordingFileText}" Style="{StaticResource FieldValue}"
+                               FontSize="12" ToolTip="{Binding RecordingFileText}" />
+                </StackPanel>
+
+                <Border Grid.Column="3" Width="1" Background="{StaticResource LineBrush}" Margin="16,2" />
+
+                <StackPanel Grid.Column="4">
+                    <TextBlock Text="写盘量 / 水位丢弃" Style="{StaticResource FieldLabel}" />
+                    <TextBlock Style="{StaticResource FieldValue}" FontFamily="{StaticResource MonoFont}" FontSize="12">
+                        <Run Text="{Binding RecordingSizeText, Mode=OneWay}" />
+                        <Run Text=" / " Foreground="{StaticResource TextMutedBrush}" />
+                        <Run Text="{Binding DroppedText, Mode=OneWay}" />
+                        <Run Text=" 帧" />
+                    </TextBlock>
+                </StackPanel>
+
+                <Grid Grid.Row="1" Grid.ColumnSpan="5" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="磁盘水位" Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
+
+                    <ProgressBar Grid.Column="1" Style="{StaticResource MeterBar}" Margin="12,0"
+                                 Minimum="0" Maximum="100" Value="{Binding DiskPercent, Mode=OneWay}"
+                                 VerticalAlignment="Center" />
+
+                    <TextBlock Grid.Column="2" Text="{Binding DiskText}" FontSize="11.5" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDiskAlarm}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

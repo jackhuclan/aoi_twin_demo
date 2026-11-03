@@ -38,6 +38,9 @@
 
         <TabControl Grid.Row="1" Style="{StaticResource NavTabControl}"
                     SelectedIndex="{Binding SelectedTabIndex}">
+            <TabItem Header="采集监控">
+                <views:CollectionMonitorView DataContext="{Binding Monitor}" />
+            </TabItem>
             <TabItem Header="回放调试">
                 <views:ReplayView DataContext="{Binding Replay}" />
             </TabItem>

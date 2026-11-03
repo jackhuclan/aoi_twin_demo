@@ -219,6 +219,38 @@ public sealed class MockResultQueueTransport(MockScenario scenario, DateTimeOffs
 }
 
 /// <summary>
+/// Mock 采集装配（T2.5/T2.4 共用）：按场景构造四路适配器，供数据集生成器与采集监控面板复用，
+/// 保证「演示面板看到的链路」与「测试验证过的链路」是同一份装配。
+/// </summary>
+public static class MockCollectionFactory
+{
+    /// <summary>四路 Mock 适配器（PLC / 相机 / 光源 / 结果队列），顺序即面板显示顺序。</summary>
+    public static AdapterBase[] BuildAdapters(MockScenario scenario)
+    {
+        ArgumentNullException.ThrowIfNull(scenario);
+        return
+        [
+            new PlcAdapter(new MockPlcTransport(scenario), BuildPlcMappings(scenario)),
+            new CameraSdkAdapter(new MockCameraTransport(scenario)),
+            new LightSourceAdapter(new MockLightTransport(scenario)),
+            new ResultQueueAdapter(new MockResultQueueTransport(scenario), scenario.PixelSizeUm),
+        ];
+    }
+
+    /// <summary>以 Mock 数据源建立采集会话（recordingOptions 为 null 时只监控不录制）。</summary>
+    public static CollectionSession CreateSession(
+        IRealtimeHub hub,
+        MockScenario scenario,
+        RecordingOptions? recordingOptions = null)
+        => new(hub, BuildAdapters(scenario), recordingOptions);
+
+    internal static IReadOnlyList<PlcAxisMapping> BuildPlcMappings(MockScenario scenario)
+        => scenario.Axes
+            .Select((a, i) => new PlcAxisMapping(a.PartId, a.AxisName, i * 4))
+            .ToList();
+}
+
+/// <summary>
 /// 合成数据集生成器（US-M1-08 全链路验证入口）：四路 Mock → 适配器 → Hub → 录制。
 /// </summary>
 public static class MockDatasetRunner
@@ -240,13 +272,7 @@ public static class MockDatasetRunner
             DiskUsedRatioProvider = diskUsedRatioProvider,
         });
 
-        var adapters = new AdapterBase[]
-        {
-            new PlcAdapter(new MockPlcTransport(scenario), BuildPlcMappings(scenario)),
-            new CameraSdkAdapter(new MockCameraTransport(scenario)),
-            new LightSourceAdapter(new MockLightTransport(scenario)),
-            new ResultQueueAdapter(new MockResultQueueTransport(scenario), scenario.PixelSizeUm),
-        };
+        var adapters = MockCollectionFactory.BuildAdapters(scenario);
 
         // 录制订阅：Hub 四类 Topic → 录制器逐帧落盘
         hub.Subscribe<AxisSnapshot>(TwinTopic.Motion, m => writer.Write(TwinTopic.Motion, m));
@@ -297,9 +323,4 @@ public static class MockDatasetRunner
                 throw new NotSupportedException($"未登记的消息类型: {message.GetType().Name}");
         }
     }
-
-    private static IReadOnlyList<PlcAxisMapping> BuildPlcMappings(MockScenario scenario)
-        => scenario.Axes
-            .Select((a, i) => new PlcAxisMapping(a.PartId, a.AxisName, i * 4))
-            .ToList();
 }

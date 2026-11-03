@@ -209,6 +209,37 @@ public class RecordingWriterTests : IDisposable
     }
 
     [Fact]
+    public void Stats_counters_track_frames_bytes_and_drops_across_rolls()
+    {
+        // T2.5 采集监控面板依赖这三个累计量：跨班次滚动不清零、只统计真实落盘帧、单独统计水位丢弃
+        var writer = new RecordingWriter(new RecordingOptions
+        {
+            Directory = _dir,
+            DeviceId = "AOI-01",
+            ShiftId = "S1",
+            MaxFileDuration = TimeSpan.FromHours(1),
+            DiskUsedRatioProvider = () => 0.1,
+        });
+
+        Assert.Equal(0, writer.TotalFrameCount);
+        Assert.Equal(0, writer.TotalBytesWritten);
+
+        writer.Write(TwinTopic.Motion, Axis(0));
+        writer.Write(TwinTopic.Motion, Axis(1));
+        writer.Write(TwinTopic.Motion, new AxisSnapshot("ROBOT", "R", 2, 0.5, Base.AddHours(1))); // 滚动
+        writer.Write(TwinTopic.Motion, Axis(3));
+
+        Assert.Equal(4, writer.TotalFrameCount);
+        Assert.Equal(0, writer.DroppedFrameCount);
+
+        writer.Dispose(); // 落 Footer 后统计值不再变化，可逐字节对账
+
+        // 累计写盘字节数 = 各文件实际长度之和（含文件头、帧头与 Footer）
+        var totalBytes = Directory.GetFiles(_dir, "*.aotrec").Sum(f => new FileInfo(f).Length);
+        Assert.Equal(totalBytes, writer.TotalBytesWritten);
+    }
+
+    [Fact]
     public void Disk_watermark_pauses_writes_and_fires_event()
     {
         double ratio = 0.5;
@@ -230,10 +261,12 @@ public class RecordingWriterTests : IDisposable
             Assert.False(writer.Write(TwinTopic.Motion, Axis(1)));
             Assert.True(writer.PausedByDiskWatermark);
             Assert.Equal(1, fired);
+            Assert.Equal(1, writer.DroppedFrameCount); // 水位丢弃单独计数（面板显示）
 
             ratio = 0.5; // 恢复
             Assert.True(writer.Write(TwinTopic.Motion, Axis(2)));
             Assert.False(writer.PausedByDiskWatermark);
+            Assert.Equal(2, writer.TotalFrameCount);
             currentFile = writer.CurrentFilePath;
         }
 
