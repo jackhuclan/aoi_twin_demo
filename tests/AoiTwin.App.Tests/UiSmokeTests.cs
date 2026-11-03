@@ -1,10 +1,12 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using AoiTwin.App.ViewModels;
 using AoiTwin.App.Views;
 using AoiTwin.Core.Bus;
 using AoiTwin.Core.Recording;
+using AoiTwin.Rendering.Scene;
 using Xunit;
 
 namespace AoiTwin.App.Tests;
@@ -68,16 +70,29 @@ public class UiSmokeTests
                 Assert.Contains("WAFER-001", replay.CurrentBatchText);
                 Assert.True(replay.TotalSeconds > 0);
 
-                // 强制布局：模板应用 + 绑定求值 + 资源查找
-                var twinView = new TwinView();
+                // 3D 场景页（T1.3/T1.4）：视口 + 真实资产包装配
+                var twin = new TwinSceneViewModel(
+                    AssetPackageLocator.LocateCatalog(), AssetPackageLocator.LocateAssetsRoot());
+                var twinView = new TwinView { DataContext = twin };
                 ForceLayout(twinView);
 
-                // 3D 视口（T1.3）：相机就位、场景挂载点已挂入视口、探针未在无窗口环境下启动
                 var viewport = twinView.TwinViewport;
                 Assert.NotNull(viewport.Viewport.Camera);
                 Assert.False(viewport.Probe.IsRunning); // Loaded 未触发前不订阅渲染循环
                 Assert.True(viewport.IsFrameProbeVisible);
                 Assert.False(viewport.HasLongFrame);
+
+                // 装配：加载完成后场景树挂到视口，每个 Mesh 都带 PartId（T1.8 点选的前提）
+                var loadTask = twin.LoadAsync(viewport.SceneRoot);
+                PumpUntilCompleted(loadTask);
+                Assert.False(twin.HasError, twin.DetailText);
+                Assert.True(twin.HasScene);
+                Assert.Equal(10, twin.Scene!.Parts.Count);
+                Assert.Equal(10, viewport.SceneRoot.Children.Count);
+                Assert.Equal(10, PartTag.CollectTagged(viewport.SceneRoot).Count);
+                Assert.Contains("已装配", twin.StatusText);
+                Assert.Equal(100, twin.ProgressPercent);
+                ForceLayout(twinView);
 
                 var replayView = new ReplayView { DataContext = replay };
                 ForceLayout(replayView);
@@ -88,7 +103,7 @@ public class UiSmokeTests
                 var monitorView = new CollectionMonitorView { DataContext = monitor };
                 ForceLayout(monitorView);
 
-                var main = new MainViewModel(monitor, replay, recordings);
+                var main = new MainViewModel(twin, monitor, replay, recordings);
                 var window = new global::AoiTwin.App.MainWindow(main);
                 Assert.Same(main, window.DataContext);
 
@@ -117,6 +132,18 @@ public class UiSmokeTests
         }
 
         Assert.Null(failure);
+    }
+
+    /// <summary>
+    /// 在 STA 线程上把异步加载跑到完成：ViewModel 的 await 会封送回 Dispatcher，
+    /// 直接 Wait 会死锁，必须推帧泵。
+    /// </summary>
+    private static void PumpUntilCompleted(Task task)
+    {
+        var frame = new DispatcherFrame();
+        _ = task.ContinueWith(_ => frame.Continue = false, TaskScheduler.Default);
+        Dispatcher.PushFrame(frame);
+        task.GetAwaiter().GetResult();
     }
 
     private static void ForceLayout(FrameworkElement element)

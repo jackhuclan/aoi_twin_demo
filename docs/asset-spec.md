@@ -45,3 +45,15 @@
 ```bash
 dotnet run --project src/AoiTwin.AssetTools -- validate assets/part-catalog.json assets/
 ```
+
+## 5. 占位资产包（T1.4，外部资产到位前的过渡方案）
+
+外部美术资产未到位前，仓库内置程序化生成的占位包（`AssetTools gen-placeholder assets` 重新生成）：
+
+- 布局：`assets/part-catalog.json` + `assets/model/<partId_snake>_{l1,l2}.glb`（每部件一个 GLB）；
+- 几何以**装配态世界坐标**烘焙进各部件文件，部件之间无需变换节点即可拼装；
+  M2 运动学所需的「部件机械零位参考点」将改为运行时由部件包围盒底面中心推算，或在正式资产包的台账中补充 `pivot` 字段（届时同步演进本规范与 schema）；
+- LOD2 仅做几何简化（环形光源 12 段 → 4 段、去除把手等细节），**运动部件全部保留**；
+- 材质为 PBR BaseColor 纯色，加载端降级为 Blinn-Phong 级漫反射 + 微弱高光。
+
+正式资产包替换占位包时保持上述布局与命名即可，加载链路（`GlbAssetLoader` → `SceneTreeBuilder`）无需改动。

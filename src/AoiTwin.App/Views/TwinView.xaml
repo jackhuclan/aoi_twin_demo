@@ -17,9 +17,13 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- ===== 页头：场景状态 / 帧探针 / 视角操作 ===== -->
+        <!-- ===== 页头：装配状态 / 帧探针 / 视角操作 ===== -->
         <Border Style="{StaticResource Card}" Padding="14,10">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -35,11 +39,22 @@
                     </Border>
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Margin="20,0,0,0" VerticalAlignment="Center">
-                    <TextBlock x:Name="SceneStatusText" Text="空场景：地面网格 + 设备占地轮廓（GLB 资产包待接入 T1.4）"
-                               FontSize="12.5" FontWeight="SemiBold" />
-                    <TextBlock Text="视口坐标系：X 向右 · Y 向前 · Z 向上；原点 = 设备安装基准面中心"
-                               Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                <StackPanel Grid.Column="1" Margin="20,0,12,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding StatusText}" FontSize="12.5" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasError}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding DetailText}" Style="{StaticResource CaptionText}"
+                               Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
@@ -62,9 +77,17 @@
 
                     <Button Content="复位视角" Style="{StaticResource ToolButton}" Click="OnResetViewClick"
                             ToolTip="回到默认等轴测视角（书签切换在 T1.5 接入）" />
+                    <Button Content="重新加载" Style="{StaticResource ToolButton}" Margin="8,0,0,0"
+                            Command="{Binding ReloadCommand}" ToolTip="重新装配资产包（资产更新后使用）" />
                     <Button x:Name="ProbeToggleButton" Content="隐藏帧探针" Style="{StaticResource ToolButton}"
                             Margin="8,0,0,0" Click="OnToggleProbeClick" />
                 </StackPanel>
+
+                <!-- 装配进度：加载期间才显示 -->
+                <ProgressBar Grid.Row="1" Grid.ColumnSpan="3" Style="{StaticResource MeterBar}"
+                             Height="3" Margin="0,9,0,0" Minimum="0" Maximum="100"
+                             Value="{Binding ProgressPercent}"
+                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
             </Grid>
         </Border>
 

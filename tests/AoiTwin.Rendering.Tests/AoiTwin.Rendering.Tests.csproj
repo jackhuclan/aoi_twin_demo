@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AoiTwin.Rendering\AoiTwin.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\AoiTwin.AssetTools\AoiTwin.AssetTools.csproj" />
   </ItemGroup>
 
 </Project>

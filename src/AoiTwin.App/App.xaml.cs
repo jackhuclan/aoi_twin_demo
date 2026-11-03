@@ -20,6 +20,7 @@ public partial class App : Application
 
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddSingleton<IRealtimeHub, RealtimeHub>();
+        builder.Services.AddSingleton<TwinSceneViewModel>();
         builder.Services.AddSingleton<CollectionMonitorViewModel>();
         builder.Services.AddSingleton<ReplayViewModel>();
         builder.Services.AddSingleton<RecordingManagerViewModel>();

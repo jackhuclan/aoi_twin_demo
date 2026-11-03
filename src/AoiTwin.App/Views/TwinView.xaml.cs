@@ -1,18 +1,37 @@
 using System.Windows;
 using System.Windows.Controls;
+using AoiTwin.App.ViewModels;
 
 namespace AoiTwin.App.Views;
 
 /// <summary>
-/// 3D 场景页（T1.3）：视口交互属视图行为（等同 ScrollViewer 的滚动语义），
-/// 直接操作 <c>TwinViewport3D</c>；场景内容与书签一旦接入（T1.4/T1.5）再引入视图模型承载状态。
+/// 3D 场景页（T1.3/T1.4）：视口交互属视图行为（等同 ScrollViewer 的滚动语义），
+/// 场景装配状态由 <see cref="TwinSceneViewModel"/> 承载；本类只负责把视口的挂载点交给视图模型，
+/// 并在首次可见时触发一次后台加载。
 /// </summary>
 public partial class TwinView : UserControl
 {
-    public TwinView() => InitializeComponent();
+    private bool _loadRequested;
 
-    /// <summary>视口实例（测试与后续 T1.4/T1.5 场景挂载需要编程访问）。</summary>
+    public TwinView()
+    {
+        InitializeComponent();
+        Loaded += OnLoaded;
+    }
+
+    /// <summary>视口实例（测试与场景挂载需要编程访问）。</summary>
     public Rendering.Viewport.TwinViewport3D TwinViewport => Viewport;
+
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_loadRequested || DataContext is not TwinSceneViewModel viewModel)
+        {
+            return;
+        }
+
+        _loadRequested = true;
+        await viewModel.LoadAsync(Viewport.SceneRoot);
+    }
 
     private void OnResetViewClick(object sender, RoutedEventArgs e) => Viewport.ResetView();
 

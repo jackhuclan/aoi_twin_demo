@@ -24,8 +24,8 @@ public sealed class TwinViewport3D : UserControl
     private const double FootprintWidth = 1.6;
     private const double FootprintDepth = 1.2;
 
-    private static readonly Point3D DefaultPosition = new(2.6, -3.2, 2.4);
-    private static readonly Point3D DefaultTarget = new(0, 0, 0.65);
+    private static readonly Point3D DefaultPosition = new(3.1, -3.8, 2.5);
+    private static readonly Point3D DefaultTarget = new(0, 0, 0.70);
 
     public static readonly DependencyProperty FrameProbeTextProperty = DependencyProperty.Register(
         nameof(FrameProbeText),

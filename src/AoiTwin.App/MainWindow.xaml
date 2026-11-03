@@ -39,7 +39,7 @@
         <TabControl Grid.Row="1" Style="{StaticResource NavTabControl}"
                     SelectedIndex="{Binding SelectedTabIndex}">
             <TabItem Header="3D 场景">
-                <views:TwinView />
+                <views:TwinView DataContext="{Binding Twin}" />
             </TabItem>
             <TabItem Header="采集监控">
                 <views:CollectionMonitorView DataContext="{Binding Monitor}" />

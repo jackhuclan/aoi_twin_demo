@@ -1,0 +1,124 @@
+{
+  "assetVersion": "0.1.0",
+  "machine": "AOI-01",
+  "parts": [
+    {
+      "partId": "BASE_FRAME",
+      "name": "整机机架",
+      "module": "FRAME",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/base_frame_l1.glb",
+        "l2": "model/base_frame_l2.glb"
+      },
+      "axes": []
+    },
+    {
+      "partId": "GATE_AXIS_X",
+      "name": "龙门 X 轴",
+      "module": "MOTION",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/gate_axis_x_l1.glb",
+        "l2": "model/gate_axis_x_l2.glb"
+      },
+      "axes": [
+        "X"
+      ]
+    },
+    {
+      "partId": "GATE_AXIS_Y",
+      "name": "横梁 Y 轴",
+      "module": "MOTION",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/gate_axis_y_l1.glb",
+        "l2": "model/gate_axis_y_l2.glb"
+      },
+      "axes": [
+        "Y"
+      ]
+    },
+    {
+      "partId": "HEAD_AXIS_Z",
+      "name": "Z 轴升降头",
+      "module": "MOTION",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/head_axis_z_l1.glb",
+        "l2": "model/head_axis_z_l2.glb"
+      },
+      "axes": [
+        "Z"
+      ]
+    },
+    {
+      "partId": "CAMERA_UNIT",
+      "name": "检测相机单元",
+      "module": "OPTICS",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/camera_unit_l1.glb",
+        "l2": "model/camera_unit_l2.glb"
+      },
+      "axes": []
+    },
+    {
+      "partId": "LIGHT_RING",
+      "name": "环形光源",
+      "module": "OPTICS",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/light_ring_l1.glb",
+        "l2": "model/light_ring_l2.glb"
+      },
+      "axes": []
+    },
+    {
+      "partId": "WAFER_STAGE",
+      "name": "晶圆载台",
+      "module": "STAGE",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/wafer_stage_l1.glb",
+        "l2": "model/wafer_stage_l2.glb"
+      },
+      "axes": [
+        "THETA"
+      ]
+    },
+    {
+      "partId": "LOAD_PORT",
+      "name": "上下料口",
+      "module": "HANDLING",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/load_port_l1.glb",
+        "l2": "model/load_port_l2.glb"
+      },
+      "axes": []
+    },
+    {
+      "partId": "SAFETY_DOOR",
+      "name": "前安全门",
+      "module": "FRAME",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/safety_door_l1.glb",
+        "l2": "model/safety_door_l2.glb"
+      },
+      "axes": []
+    },
+    {
+      "partId": "SIGNAL_TOWER",
+      "name": "三色警示灯",
+      "module": "STATUS",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/signal_tower_l1.glb",
+        "l2": "model/signal_tower_l2.glb"
+      },
+      "axes": []
+    }
+  ]
+}

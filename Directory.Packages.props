@@ -22,6 +22,7 @@
   <!-- T1.2 资产校验工具：GLB 解析 -->
   <ItemGroup Label="模型资产">
     <PackageVersion Include="SharpGLTF.Toolkit" Version="1.0.4" />
+    <PackageVersion Include="SharpGLTF.Core" Version="1.0.4" />
   </ItemGroup>
 
   <ItemGroup Label="测试">

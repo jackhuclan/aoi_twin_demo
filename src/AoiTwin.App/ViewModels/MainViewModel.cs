@@ -12,15 +12,20 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private const int ReplayTabIndex = 2;
 
     public MainViewModel(
+        TwinSceneViewModel twin,
         CollectionMonitorViewModel monitor,
         ReplayViewModel replay,
         RecordingManagerViewModel recordings)
     {
+        Twin = twin;
         Monitor = monitor;
         Replay = replay;
         Recordings = recordings;
         Recordings.ReplayRequested += OnReplayRequested;
     }
+
+    /// <summary>3D 场景页（T1.4）。</summary>
+    public TwinSceneViewModel Twin { get; }
 
     public CollectionMonitorViewModel Monitor { get; }
 
