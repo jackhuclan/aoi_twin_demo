@@ -11,4 +11,5 @@
   <Project Path="tests/AoiTwin.AssetTools.Tests/AoiTwin.AssetTools.Tests.csproj" />
   <Project Path="tests/AoiTwin.App.Tests/AoiTwin.App.Tests.csproj" />
   <Project Path="tests/AoiTwin.Rendering.Tests/AoiTwin.Rendering.Tests.csproj" />
+  <Project Path="tools/AoiTwin.Soak/AoiTwin.Soak.csproj" />
 </Solution>

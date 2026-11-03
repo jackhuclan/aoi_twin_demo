@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>AoiTwin.Soak</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AoiTwin.Adapters\AoiTwin.Adapters.csproj" />
+    <ProjectReference Include="..\..\src\AoiTwin.Adapters.Mock\AoiTwin.Adapters.Mock.csproj" />
+    <ProjectReference Include="..\..\src\AoiTwin.Rendering\AoiTwin.Rendering.csproj" />
+  </ItemGroup>
+
+</Project>

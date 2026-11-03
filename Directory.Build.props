@@ -8,7 +8,7 @@
   <PropertyGroup>
 
     <!-- 版本：语义化版本，同时作为 AssemblyVersion / FileVersion / NuGet 包版本 -->
-    <Version>0.1.19</Version>
+    <Version>0.1.20</Version>
 
     <!-- 作者与公司 -->
     <Authors>jackhuclan</Authors>
