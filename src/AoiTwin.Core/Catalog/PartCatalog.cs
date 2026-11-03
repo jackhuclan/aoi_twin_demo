@@ -62,12 +62,13 @@ public sealed class PartCatalog
     public PartCatalog(PartCatalogDocument document)
     {
         Document = document;
-        _byPartId = document.Parts.ToDictionary(p => p.PartId, StringComparer.Ordinal);
-        if (_byPartId.Count != document.Parts.Count)
+        var dup = document.Parts.GroupBy(p => p.PartId).FirstOrDefault(g => g.Count() > 1)?.Key;
+        if (dup is not null)
         {
-            var dup = document.Parts.GroupBy(p => p.PartId).First(g => g.Count() > 1).Key;
             throw new ArgumentException($"partId 重复: {dup}", nameof(document));
         }
+
+        _byPartId = document.Parts.ToDictionary(p => p.PartId, StringComparer.Ordinal);
     }
 
     public PartCatalogDocument Document { get; }
