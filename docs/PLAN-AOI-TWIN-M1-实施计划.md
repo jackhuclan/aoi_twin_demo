@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |---|---|
 | 文档编号 | PLAN-AOI-TWIN-M1 |
-| 版本 / 状态 | v1.0 / 待评审 |
+| 版本 / 状态 | v1.1 / 实施完成（T1.1–T4.5 全部落地，外部条件项见 §8） |
 | 上游文档 | PRD-AOI-TWIN-M1（本文所有 FR/NFR/US 编号均指向该 PRD） |
 | 工作方法 | 红绿 TDD（Core 层强制）+ 子代理并行开发 + 任务级评审 |
 | 交付工程 | `E:\aoi_twin_demo`（解决方案 `AoiTwin.slnx`） |
@@ -210,3 +210,39 @@ docs/
 | PLC/SDK 协议文档缺失 | T2.3 被阻塞 | Mock 先行（T2.4），真实协议后补，采集窗口前必须闭环 |
 | 采集窗口难约 | W7 窗口未落实 | W4 起由 C 线专人协调；全链路离线可开发，窗口仅影响 T3.4 |
 | HelixToolkit 性能不达标 | T1.6 Draw Call 下降 < 40% | 提前触发合批预研（三期 FR-M3-13 的最小版本前移） |
+
+---
+
+## 9. 实施结果对照（v1.1 收口）
+
+任务状态：✅ 已交付 ｜ 🟡 代码/文档已交付，验收依赖外部条件
+
+| 任务 | 交付物 | 状态 | 版本 / 提交 |
+|---|---|---|---|
+| T1.0 契约冻结 | `AoiTwin.Core/Messaging/*`（TwinTopic + 四类消息 + IRealtimeHub） | ✅ | 0.1.4 |
+| T1.1 建模规范 | `docs/asset-spec.md` | 🟡 待评审签字 | 0.1.2 |
+| T1.2 资产校验工具 | `src/AoiTwin.AssetTools`（verify / gen-placeholder / rec verify） | ✅ | 0.1.3 |
+| T1.3 视口控件 | `Rendering/Viewport/TwinViewport3D`（含帧时间探针、Environment 地面） | ✅ | 0.1.14 |
+| T1.4 GLB 预加载与装配 | `Rendering/Scene/*`（后台加载 + Freeze + 场景树） | ✅ | 0.1.15 |
+| T1.5 相机书签 | `Rendering/Camera/*`（4 预置 + 自定义持久化 + 过渡硬顶 760ms） | ✅ | 0.1.16 |
+| T1.6 LOD 两档 | `Rendering/Lod/*`（运动组合批 + 距离回滞，Draw Call −50%） | ✅ | 0.1.17 |
+| T1.7 PartId 台账 | `Core/Catalog/*` + `docs/part-catalog.schema.json` | 🟡 Schema 待评审签字 | 0.1.4 |
+| T1.8 点选 + 描边 | `Rendering/Interaction/*`（Möller–Trumbore + 反向壳描边） | ✅ | 0.1.18 |
+| T2.1 RealtimeHub | `Core/Messaging/RealtimeHub` | ✅ | 0.1.4 |
+| T2.2 录制容器 | `Core/Recording/*`（CRC32 + SHA-256 + 断电修复 + 滚动） | ✅ | 0.1.5 |
+| T2.3 四路适配器 | `Adapters/*`（退避重连 + 健康状态机 + 异常隔离） | ✅ | 0.1.6 |
+| T2.4 Mock 与合成数据集 | `AoiTwin.Adapters.Mock` | ✅ | 0.1.7 |
+| T2.5 采集监控面板 | `App/ViewModels/CollectionMonitorViewModel` | ✅ | 0.1.13 |
+| T3.1 回放引擎 | `Core/Replay/*` | ✅ | 0.1.8 |
+| T3.2 回放 UI | `App/Views/ReplayView` | ✅ | 0.1.10 |
+| T3.3 录制管理界面 | `App/Views/RecordingManagerView` | ✅ | 0.1.10 |
+| T3.4 现场采集 | `docs/field-collection-runbook.md` | 🟡 待现场窗口 | 0.1.20 |
+| T3.5 一致性校验 | `AssetTools rec verify` | ✅ | 0.1.8 |
+| T4.1 布局切换 | `App/Views/TwinView`（右侧四页签 + 沉浸全屏） | ✅ | 0.1.19 |
+| T4.2 稳定性报告 | `docs/m1-stability-report.md` | 🟡 24h 待夜间执行 | 0.1.20 |
+| T4.3 性能报告 | `docs/m1-perf-report.md` | 🟡 NFR-01 待基准机 | 0.1.20 |
+| T4.4 验收清单 | `docs/m1-acceptance-checklist.md` | ✅ | 0.1.20 |
+| T4.5 文档收口 | `README.md`、`docs/architecture-whitepaper-v0.1.md`、PRD 版本历史 | ✅ | 0.1.20 |
+
+**四项 🟡 的共同点**：都不是实现缺口，而是需要现场条件（基准机 60Hz 会话、产线夜间窗口、
+评审会签字）。每项在 `docs/m1-acceptance-checklist.md` 中都写明了复跑命令或签署方式。

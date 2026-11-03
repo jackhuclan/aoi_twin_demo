@@ -1,0 +1,57 @@
+mode=soak
+started=2026-11-03 16:12:36
+plannedMinutes=20
+recordDir=D:\aoi-soak2
+recordingStarted=True
+recordingFile=（未启动）
+actualDuration=00:20:00
+baselineWorkingSetMB=40
+maxWorkingSetMB=44
+maxGrowthMB=3
+sampleCount=40
+sample t=00:00:00 msgs=25 rate=46/s frames=25 bytes=15127 drops=0 ws=37MB
+sample t=00:00:31 msgs=1267 rate=42/s frames=1267 bytes=530668 drops=0 ws=43MB
+sample t=00:01:01 msgs=2527 rate=48/s frames=2527 bytes=1051557 drops=0 ws=40MB
+sample t=00:01:31 msgs=3771 rate=41/s frames=3771 bytes=1561199 drops=0 ws=39MB
+sample t=00:02:01 msgs=5054 rate=42/s frames=5054 bytes=2076766 drops=0 ws=39MB
+sample t=00:02:31 msgs=6245 rate=38/s frames=6245 bytes=2580713 drops=0 ws=39MB
+sample t=00:03:02 msgs=7486 rate=39/s frames=7486 bytes=3098209 drops=0 ws=39MB
+sample t=00:03:32 msgs=8740 rate=45/s frames=8740 bytes=3610750 drops=0 ws=34MB
+sample t=00:04:02 msgs=9952 rate=39/s frames=9952 bytes=4123076 drops=0 ws=32MB
+sample t=00:04:33 msgs=11190 rate=40/s frames=11190 bytes=4639557 drops=0 ws=33MB
+sample t=00:05:03 msgs=12462 rate=39/s frames=12462 bytes=5155125 drops=0 ws=34MB
+sample t=00:05:33 msgs=13763 rate=39/s frames=13763 bytes=5679860 drops=0 ws=39MB
+sample t=00:06:03 msgs=15040 rate=44/s frames=15040 bytes=6194834 drops=0 ws=38MB
+sample t=00:06:34 msgs=16312 rate=44/s frames=16312 bytes=6709748 drops=0 ws=37MB
+sample t=00:07:04 msgs=17590 rate=38/s frames=17590 bytes=7228191 drops=0 ws=38MB
+sample t=00:07:34 msgs=18870 rate=38/s frames=18870 bytes=7743510 drops=0 ws=40MB
+sample t=00:08:04 msgs=20161 rate=47/s frames=20161 bytes=8266039 drops=0 ws=41MB
+sample t=00:08:34 msgs=21460 rate=45/s frames=21460 bytes=8783551 drops=0 ws=42MB
+sample t=00:09:05 msgs=22743 rate=39/s frames=22743 bytes=9305521 drops=0 ws=42MB
+sample t=00:09:35 msgs=24010 rate=40/s frames=24010 bytes=9826265 drops=0 ws=42MB
+sample t=00:10:05 msgs=25266 rate=42/s frames=25266 bytes=10339754 drops=0 ws=42MB
+sample t=00:10:36 msgs=26547 rate=44/s frames=26547 bytes=10854086 drops=0 ws=42MB
+sample t=00:11:06 msgs=27818 rate=46/s frames=27818 bytes=11374741 drops=0 ws=42MB
+sample t=00:11:36 msgs=29038 rate=39/s frames=29038 bytes=11883222 drops=0 ws=42MB
+sample t=00:12:06 msgs=30272 rate=34/s frames=30272 bytes=12393384 drops=0 ws=42MB
+sample t=00:12:36 msgs=31528 rate=36/s frames=31528 bytes=12912312 drops=0 ws=42MB
+sample t=00:13:06 msgs=32777 rate=48/s frames=32777 bytes=13422300 drops=0 ws=42MB
+sample t=00:13:37 msgs=34003 rate=39/s frames=34003 bytes=13938087 drops=0 ws=42MB
+sample t=00:14:07 msgs=35275 rate=41/s frames=35275 bytes=14459802 drops=0 ws=42MB
+sample t=00:14:38 msgs=36554 rate=39/s frames=36554 bytes=14982170 drops=0 ws=42MB
+sample t=00:15:08 msgs=37773 rate=40/s frames=37773 bytes=15496148 drops=0 ws=42MB
+sample t=00:15:39 msgs=38998 rate=48/s frames=38998 bytes=16005468 drops=0 ws=43MB
+sample t=00:16:09 msgs=40241 rate=43/s frames=40241 bytes=16523016 drops=0 ws=43MB
+sample t=00:16:39 msgs=41508 rate=41/s frames=41508 bytes=17043327 drops=0 ws=43MB
+sample t=00:17:10 msgs=42792 rate=24/s frames=42790 bytes=17565557 drops=0 ws=43MB
+sample t=00:17:40 msgs=44036 rate=40/s frames=44036 bytes=18077098 drops=0 ws=43MB
+sample t=00:18:10 msgs=45272 rate=38/s frames=45272 bytes=18593340 drops=0 ws=43MB
+sample t=00:18:41 msgs=46490 rate=37/s frames=46489 bytes=19106141 drops=0 ws=43MB
+sample t=00:19:11 msgs=47764 rate=44/s frames=47764 bytes=19627844 drops=0 ws=43MB
+sample t=00:19:42 msgs=48955 rate=40/s frames=48955 bytes=20138107 drops=0 ws=43MB
+inspectFrames=49693
+inspectFinalized=True
+inspectErrors=0
+fileSizeMB=19
+memoryGrowthOk=True
+result=PASS

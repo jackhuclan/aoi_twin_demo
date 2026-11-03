@@ -1,0 +1,26 @@
+mode=soak
+started=2026-11-03 16:34:16
+plannedMinutes=3
+recordDir=D:\aoi-soak-smoke
+recordingStarted=True
+actualDuration=00:03:00
+baselineWorkingSetMB=43
+maxWorkingSetMB=48
+maxGrowthMB=5
+sampleCount=6
+sample t=00:00:00 msgs=20 rate=39/s frames=20 bytes=8524 drops=0 ws=37MB
+sample t=00:00:30 msgs=1266 rate=39/s frames=1266 bytes=524677 drops=0 ws=44MB
+sample t=00:01:00 msgs=2540 rate=38/s frames=2540 bytes=1041175 drops=0 ws=43MB
+sample t=00:01:31 msgs=3819 rate=40/s frames=3819 bytes=1561413 drops=0 ws=44MB
+sample t=00:02:01 msgs=5076 rate=38/s frames=5076 bytes=2079557 drops=0 ws=46MB
+sample t=00:02:32 msgs=6374 rate=47/s frames=6374 bytes=2602993 drops=0 ws=47MB
+recordingFile=D:/aoi-soak-smoke\AOI-01_20261103_0834.aotrec
+inspectFrames=7580
+inspectFinalized=True
+inspectErrors=0
+fileSizeMB=2
+maxDrops=0
+memoryGrowthOk=True
+dropsOk=True
+inspectOk=True
+result=PASS
