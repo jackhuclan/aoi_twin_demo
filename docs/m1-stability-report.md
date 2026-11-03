@@ -121,7 +121,7 @@ dotnet run -c Release --project tools/AoiTwin.Soak -- \
   soak 1440 "D:\aoi-soak-24h" "docs/m1-stability-24h.txt"
 ```
 
-该命令跑完会自行输出 `maxGrowthMB` / `drops` / `inspectFrames` / `result`，
+该命令跑完会自行输出 `maxGrowthMB` / `maxDrops` / `inspectFrames` / `inspectErrors` / `result`，
 把输出文件放进 `docs/` 即完成 §7-5 的证据归档。
 
 **24h 才可能暴露、而短周期测不到的两个点**（如实列出，验收时重点看）：
@@ -144,7 +144,7 @@ dotnet run -c Release --project tools/AoiTwin.Soak -- \
 
 ## 6. 汇总
 
-| 判据 | 预算 | 实测（第一轮 15min） | 状态 |
+| 判据 | 预算 | 实测（15min + 20min 两轮） | 状态 |
 |------|------|----------------------|------|
 | 无崩溃 | 0 次 | 0 | ✅ |
 | 丢帧率 | 0 | 0 / 38086 帧（另有 0 / 49693 帧） | ✅ |
