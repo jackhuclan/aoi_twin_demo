@@ -92,11 +92,9 @@ public class CollectionSessionTests : IDisposable
         using var session = MockCollectionFactory.CreateSession(hub, SmallScenario());
 
         session.Start();
-        WaitFor(() =>
-        {
-            var snap = session.Snapshot();
-            return snap.Topics.Count(t => t.Count > 0) == 3;
-        });
+        // 等待条件必须是「每一路都产出」：CAMERA 有限频，Connected 先于首条消息，
+        // 只等 Topic 有量就会让个别源 0 计数（CI 慢速调度下的假失败源）
+        WaitFor(() => session.Snapshot().Sources.All(s => s.MessageCount > 0));
 
         var snapshot = session.Snapshot();
 

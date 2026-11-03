@@ -41,15 +41,16 @@ public class UiSmokeTests
                 Assert.False(monitor.IsRunning);
                 Assert.Equal(4, monitor.Sources.Count);
                 Assert.Equal(4, monitor.Topics.Count);
+                // 等待条件必须是「每一路都产出」：CAMERA 有 100ms 限频，Connected 先于首条消息，
+                // 用总帧数兜底会在 CI 慢速调度下让个别源 0 计数（0.1.14 CI 假失败教训）
                 monitor.StartCommand.Execute(null);
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 while (!monitor.IsRunning
-                    || !monitor.Sources.All(s => s.IsConnected)
-                    || monitor.Topics.Sum(t => t.Count) < 6)
+                    || !monitor.Sources.All(s => s.IsConnected && s.MessageCount > 0))
                 {
                     Thread.Sleep(50);
                     monitor.Refresh();
-                    Assert.True(sw.ElapsedMilliseconds < 20000, "Mock 采集未在 20s 内产出数据");
+                    Assert.True(sw.ElapsedMilliseconds < 20000, "Mock 采集未在 20s 内让四路全部产出");
                 }
 
                 Assert.Equal("采集中", monitor.RunStateText);
