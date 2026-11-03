@@ -173,11 +173,21 @@ public sealed class ReplayEngine : IDisposable
             throw new ArgumentOutOfRangeException(nameof(elapsed));
         }
 
+        SeekToFrame(FindFrameByElapsed(elapsed));
+    }
+
+    /// <summary>
+    /// Seek 到精确帧号（批次跳转用，T3.2）：跳转后的下一帧即 index[frameIndex]，不会落在同时间戳的相邻帧上。
+    /// 传入 ≥ 帧总数时置为已完成。
+    /// </summary>
+    public void SeekToFrame(int frameIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(frameIndex);
         Pause();
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            _cursor = FindFrameByElapsed(elapsed);
+            _cursor = Math.Min(frameIndex, _index.Count);
             _state = _cursor >= _index.Count ? ReplayState.Completed : ReplayState.Paused;
         }
     }

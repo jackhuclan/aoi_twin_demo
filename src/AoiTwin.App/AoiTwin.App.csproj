@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AoiTwin.Core\AoiTwin.Core.csproj" />
     <ProjectReference Include="..\AoiTwin.Rendering\AoiTwin.Rendering.csproj" />
   </ItemGroup>

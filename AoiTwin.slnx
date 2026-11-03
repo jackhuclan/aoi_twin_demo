@@ -9,4 +9,5 @@
   <Project Path="tests/AoiTwin.Core.Tests/AoiTwin.Core.Tests.csproj" />
   <Project Path="tests/AoiTwin.Adapters.Tests/AoiTwin.Adapters.Tests.csproj" />
   <Project Path="tests/AoiTwin.AssetTools.Tests/AoiTwin.AssetTools.Tests.csproj" />
+  <Project Path="tests/AoiTwin.App.Tests/AoiTwin.App.Tests.csproj" />
 </Solution>

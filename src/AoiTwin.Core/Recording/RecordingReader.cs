@@ -295,65 +295,80 @@ public static class RecordingReader
     public static IReadOnlyList<FrameIndexEntry> BuildIndex(string filePath)
     {
         var entries = new List<FrameIndexEntry>();
-        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
 
-        // ---- 跳过文件头 ----
-        Span<byte> magic = stackalloc byte[8];
-        stream.ReadExactly(magic);
-        if (!magic.SequenceEqual(RecFileFormat.FileMagic))
+        // 在线场景（录制中打开文件做批次索引）时文件头/尾帧可能尚未刷盘，
+        // 读取越界不应抛给调用方——按「有效前缀为止」处理。
+        try
         {
-            throw new InvalidDataException("文件头 magic 不符");
-        }
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
 
-        stream.Seek(4, SeekOrigin.Current); // version
-        var devLen = BinaryPrimitives.ReadUInt16LittleEndian(reader.ReadBytes(2));
-        stream.Seek(devLen, SeekOrigin.Current);
-        var shiftLen = BinaryPrimitives.ReadUInt16LittleEndian(reader.ReadBytes(2));
-        stream.Seek(shiftLen, SeekOrigin.Current);
-        stream.Seek(8, SeekOrigin.Current); // startUnixMs
-        var headerEnd = stream.Position;
-
-        // ---- 帧区终点：有合法 Footer 则为其起始，否则为文件长度 ----
-        var fileLength = stream.Length;
-        var framesEnd = fileLength;
-        if (fileLength >= RecFileFormat.FooterSize)
-        {
-            stream.Seek(fileLength - RecFileFormat.FooterSize, SeekOrigin.Begin);
-            Span<byte> footerMagic = stackalloc byte[8];
-            stream.ReadExactly(footerMagic);
-            if (footerMagic.SequenceEqual(RecFileFormat.FooterMagic))
+            // ---- 跳过文件头 ----
+            Span<byte> magic = stackalloc byte[8];
+            stream.ReadExactly(magic);
+            if (!magic.SequenceEqual(RecFileFormat.FileMagic))
             {
-                framesEnd = fileLength - RecFileFormat.FooterSize;
+                throw new InvalidDataException("文件头 magic 不符");
+            }
+
+            stream.Seek(4, SeekOrigin.Current); // version
+            var devLen = BinaryPrimitives.ReadUInt16LittleEndian(reader.ReadBytes(2));
+            stream.Seek(devLen, SeekOrigin.Current);
+            var shiftLen = BinaryPrimitives.ReadUInt16LittleEndian(reader.ReadBytes(2));
+            stream.Seek(shiftLen, SeekOrigin.Current);
+            stream.Seek(8, SeekOrigin.Current); // startUnixMs
+            var headerEnd = stream.Position;
+
+            // ---- 帧区终点：有合法 Footer 则为其起始，否则为文件长度 ----
+            var fileLength = stream.Length;
+            var framesEnd = fileLength;
+            if (fileLength >= RecFileFormat.FooterSize)
+            {
+                stream.Seek(fileLength - RecFileFormat.FooterSize, SeekOrigin.Begin);
+                Span<byte> footerMagic = stackalloc byte[8];
+                stream.ReadExactly(footerMagic);
+                if (footerMagic.SequenceEqual(RecFileFormat.FooterMagic))
+                {
+                    framesEnd = fileLength - RecFileFormat.FooterSize;
+                }
+            }
+
+            // ---- 逐帧索引 ----
+            stream.Seek(headerEnd, SeekOrigin.Begin);
+            while (stream.Position + RecFileFormat.FrameHeaderSize <= framesEnd)
+            {
+                var offset = stream.Position;
+                var header = reader.ReadBytes(RecFileFormat.FrameHeaderSize);
+                if (header.Length < RecFileFormat.FrameHeaderSize)
+                {
+                    break;
+                }
+
+                var payloadLen = BinaryPrimitives.ReadUInt32LittleEndian(header);
+                if (payloadLen == 0 || payloadLen > RecFileFormat.MaxPayloadLength
+                    || stream.Position + payloadLen > framesEnd)
+                {
+                    break;
+                }
+
+                var expectedCrc = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(4));
+                var payload = reader.ReadBytes((int)payloadLen);
+                if (payload.Length < payloadLen || Crc32.Final(Crc32.Compute(payload)) != expectedCrc)
+                {
+                    break;
+                }
+
+                entries.Add(new FrameIndexEntry(
+                    offset,
+                    BinaryPrimitives.ReadInt64LittleEndian(header.AsSpan(12)),
+                    (Bus.TwinTopic)header[8],
+                    header[9],
+                    (int)payloadLen));
             }
         }
-
-        // ---- 逐帧索引 ----
-        stream.Seek(headerEnd, SeekOrigin.Begin);
-        while (stream.Position + RecFileFormat.FrameHeaderSize <= framesEnd)
+        catch (EndOfStreamException)
         {
-            var offset = stream.Position;
-            var header = reader.ReadBytes(RecFileFormat.FrameHeaderSize);
-            var payloadLen = BinaryPrimitives.ReadUInt32LittleEndian(header);
-            if (payloadLen == 0 || payloadLen > RecFileFormat.MaxPayloadLength
-                || stream.Position + payloadLen > framesEnd)
-            {
-                break;
-            }
-
-            var expectedCrc = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(4));
-            var payload = reader.ReadBytes((int)payloadLen);
-            if (Crc32.Final(Crc32.Compute(payload)) != expectedCrc)
-            {
-                break;
-            }
-
-            entries.Add(new FrameIndexEntry(
-                offset,
-                BinaryPrimitives.ReadInt64LittleEndian(header.AsSpan(12)),
-                (Bus.TwinTopic)header[8],
-                header[9],
-                (int)payloadLen));
+            // 文件仍在写入（尾部未落盘）：返回已索引的有效前缀
         }
 
         return entries;
