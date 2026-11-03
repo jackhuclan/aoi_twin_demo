@@ -21,7 +21,9 @@ config.json
 sessions/
 
 # 大文件：产线录制数据走本地存储 + 清单登记（见 PLAN §7），不入 Git
-assets/recordings/
+assets/recordings/*
+# 例外：登记清单本身要入库（只含路径/帧数/SHA-256，不含数据）
+!assets/recordings/manifest.md
 
 # Logs
 *.log

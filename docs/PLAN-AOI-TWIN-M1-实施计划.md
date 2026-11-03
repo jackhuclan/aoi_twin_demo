@@ -236,7 +236,7 @@ docs/
 | T3.1 回放引擎 | `Core/Replay/*` | ✅ | 0.1.8 |
 | T3.2 回放 UI | `App/Views/ReplayView` | ✅ | 0.1.10 |
 | T3.3 录制管理界面 | `App/Views/RecordingManagerView` | ✅ | 0.1.10 |
-| T3.4 现场采集 | `docs/field-collection-runbook.md` | 🟡 待现场窗口 | 0.1.20 |
+| T3.4 现场采集 | `docs/field-collection-runbook.md` + `assets/recordings/manifest.md`（dry-run 已通过） | 🟡 待现场窗口 | 0.1.20 |
 | T3.5 一致性校验 | `AssetTools rec verify` | ✅ | 0.1.8 |
 | T4.1 布局切换 | `App/Views/TwinView`（右侧四页签 + 沉浸全屏） | ✅ | 0.1.19 |
 | T4.2 稳定性报告 | `docs/m1-stability-report.md` | 🟡 24h 待夜间执行 | 0.1.20 |

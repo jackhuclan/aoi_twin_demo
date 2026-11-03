@@ -79,7 +79,7 @@
 
 | 子项 | 状态 | 说明 |
 |------|------|------|
-| 录制 ≥3 个完整班次真实产线数据 | 🟡 | **待 T3.4 现场窗口**。作业指导已就绪：`docs/field-collection-runbook.md` |
+| 录制 ≥3 个完整班次真实产线数据 | 🟡 | **待 T3.4 现场窗口**。作业指导 `docs/field-collection-runbook.md` + 登记清单 `assets/recordings/manifest.md` 已就绪，并已用 20 分钟 Mock 录制 dry-run 跑通「录制→校验→登记」 |
 | 任选一段回放，消息序列与录制文件逐条一致 | ✅ | `AoiTwin.AssetTools rec verify`：逐帧 CRC32 + 全文件 SHA-256；Mock 全链路 38086 帧校验 0 错误 |
 | 一致性校验工具可用 | ✅ | `rec verify`（T3.5），CI 中有用例覆盖 |
 

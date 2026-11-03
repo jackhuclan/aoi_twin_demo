@@ -41,7 +41,8 @@ dotnet run --project src/AoiTwin.AssetTools -- verify <file.aotrec> [--repair]  
 
 - 录制格式 `.aotrec`：分帧（20B 头 + CRC32）+ Footer（SHA-256），断电可修复；
 - 磁盘水位 85% 自动暂停、班次/2 小时滚动文件、环形缓冲防背压；
-- 现场班次采集作业指导与登记清单：`docs/field-collection-runbook.md`（T3.4 待现场执行）；
+- 现场班次采集作业指导：`docs/field-collection-runbook.md`；登记清单：`assets/recordings/manifest.md`
+  （T3.4 工具与流程已 dry-run 通过，待现场窗口执行）；
 - Mock 数据集：`AoiTwin.Adapters.Mock`（CI 全链路冒烟的数据源）。
 
 ## 验收与报告
