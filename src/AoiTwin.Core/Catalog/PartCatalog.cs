@@ -43,8 +43,9 @@ public sealed record PartCatalogEntry(
 public sealed record PartCatalogDocument(
     [property: JsonPropertyName("assetVersion")] string AssetVersion,
     [property: JsonPropertyName("machine")] string Machine,
-    [property: JsonPropertyName("parts")] IReadOnlyList<PartCatalogEntry>? Parts)
+    IReadOnlyList<PartCatalogEntry>? Parts)
 {
+    [JsonPropertyName("parts")]
     public IReadOnlyList<PartCatalogEntry> Parts { get; init; } =
         Parts is { Count: > 0 } ? Parts : throw new ArgumentException("parts 不能为空", nameof(Parts));
 }
