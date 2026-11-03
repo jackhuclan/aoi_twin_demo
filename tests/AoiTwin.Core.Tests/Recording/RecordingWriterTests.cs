@@ -241,6 +241,30 @@ public class RecordingWriterTests : IDisposable
     }
 
     [Fact]
+    public void Concurrent_writers_produce_valid_frames()
+    {
+        // 回归：四路适配器多线程并发 Write，帧不得交错损坏（T2.4 发现）
+        const int threads = 4;
+        const int perThread = 10_000;
+        using (var writer = new RecordingWriter(new RecordingOptions { Directory = _dir, DeviceId = "T", ShiftId = "C", DiskUsedRatioProvider = () => 0.1 }))
+        {
+            Parallel.For(0, threads, t =>
+            {
+                for (var i = 0; i < perThread; i++)
+                {
+                    writer.Write(TwinTopic.Motion, Axis(t * perThread + i));
+                }
+            });
+        }
+
+        var path = Assert.Single(Directory.GetFiles(_dir, "*.aotrec"));
+        var info = RecordingReader.Inspect(path);
+        Assert.True(info.IsFinalized, string.Join("\n", info.Errors));
+        Assert.False(info.HasErrors);
+        Assert.Equal(threads * perThread, info.ValidFrameCount);
+    }
+
+    [Fact]
     public void Writer_rejects_unregistered_message_type()
     {
         using var writer = new RecordingWriter(Options());

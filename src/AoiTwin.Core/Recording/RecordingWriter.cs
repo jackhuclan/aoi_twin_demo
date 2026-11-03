@@ -33,6 +33,7 @@ public sealed record RecordingOptions
 public sealed class RecordingWriter : IDisposable
 {
     private readonly RecordingOptions _options;
+    private readonly object _writeLock = new();
     private readonly FileStream?[] _fileSlot = new FileStream?[1];
     private IncrementalHash? _sha;
     private long _frameCount;
@@ -61,48 +62,57 @@ public sealed class RecordingWriter : IDisposable
 
     /// <summary>
     /// 写入一帧。磁盘水位超限时返回 false（不写入，消息由上层环形缓冲保压）。
+    /// 线程安全：多路适配器可能在不同线程并发发布，帧写入在锁内串行化以保证帧完整性。
     /// </summary>
     public bool Write(Bus.TwinTopic topic, Bus.ITwinMessage message)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(message);
 
-        if (IsOverDiskWatermark())
+        lock (_writeLock)
         {
-            if (!PausedByDiskWatermark)
+            if (_disposed)
             {
-                PausedByDiskWatermark = true;
-                DiskWatermarkPaused?.Invoke(this, EventArgs.Empty);
+                throw new ObjectDisposedException(nameof(RecordingWriter));
             }
 
-            return false;
+            if (IsOverDiskWatermark())
+            {
+                if (!PausedByDiskWatermark)
+                {
+                    PausedByDiskWatermark = true;
+                    DiskWatermarkPaused?.Invoke(this, EventArgs.Empty);
+                }
+
+                return false;
+            }
+
+            PausedByDiskWatermark = false;
+            EnsureFile(message.Timestamp);
+
+            var payload = JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), Serialization.TwinJson.Options);
+            if (payload.Length > RecFileFormat.MaxPayloadLength)
+            {
+                throw new ArgumentException($"消息 payload 超过单帧上限 {RecFileFormat.MaxPayloadLength}B");
+            }
+
+            var crc = Crc32.Final(Crc32.Compute(payload));
+            Span<byte> header = stackalloc byte[RecFileFormat.FrameHeaderSize];
+            BinaryPrimitives.WriteUInt32LittleEndian(header, (uint)payload.Length);
+            BinaryPrimitives.WriteUInt32LittleEndian(header[4..], crc);
+            header[8] = (byte)topic;
+            header[9] = RecFileFormat.TypeIdOf(message);
+            BinaryPrimitives.WriteUInt16LittleEndian(header[10..], 0);
+            BinaryPrimitives.WriteInt64LittleEndian(header[12..], message.Timestamp.ToUnixTimeMilliseconds());
+
+            var stream = _fileSlot[0]!;
+            _sha!.AppendData(header);
+            _sha.AppendData(payload);
+            stream.Write(header);
+            stream.Write(payload);
+            _frameCount++;
+            return true;
         }
-
-        PausedByDiskWatermark = false;
-        EnsureFile(message.Timestamp);
-
-        var payload = JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), Serialization.TwinJson.Options);
-        if (payload.Length > RecFileFormat.MaxPayloadLength)
-        {
-            throw new ArgumentException($"消息 payload 超过单帧上限 {RecFileFormat.MaxPayloadLength}B");
-        }
-
-        var crc = Crc32.Final(Crc32.Compute(payload));
-        Span<byte> header = stackalloc byte[RecFileFormat.FrameHeaderSize];
-        BinaryPrimitives.WriteUInt32LittleEndian(header, (uint)payload.Length);
-        BinaryPrimitives.WriteUInt32LittleEndian(header[4..], crc);
-        header[8] = (byte)topic;
-        header[9] = RecFileFormat.TypeIdOf(message);
-        BinaryPrimitives.WriteUInt16LittleEndian(header[10..], 0);
-        BinaryPrimitives.WriteInt64LittleEndian(header[12..], message.Timestamp.ToUnixTimeMilliseconds());
-
-        var stream = _fileSlot[0]!;
-        _sha!.AppendData(header);
-        _sha.AppendData(payload);
-        stream.Write(header);
-        stream.Write(payload);
-        _frameCount++;
-        return true;
     }
 
     /// <summary>立即滚动新文件（班次边界/手动切分）。</summary>

@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AoiTwin.Adapters\AoiTwin.Adapters.csproj" />
+    <ProjectReference Include="..\..\src\AoiTwin.Adapters.Mock\AoiTwin.Adapters.Mock.csproj" />
   </ItemGroup>
 
 </Project>

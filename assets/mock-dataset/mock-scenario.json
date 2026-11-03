@@ -1,0 +1,15 @@
+{
+  "scenarioName": "AOI-01-standard-shift",
+  "seed": 20261103,
+  "axes": [
+    { "partId": "ROBOT", "axisName": "R", "amplitudeUm": 150000, "periodSec": 45 },
+    { "partId": "ROBOT", "axisName": "Theta", "amplitudeUm": 30000, "periodSec": 60 },
+    { "partId": "STAGE", "axisName": "Z", "amplitudeUm": 8000, "periodSec": 20 }
+  ],
+  "lightChannels": 8,
+  "decayChannel": 3,
+  "waferIntervalSec": 31.5,
+  "waferMapSize": 64,
+  "defectsPerWafer": 4.0,
+  "pixelSizeUm": 0.5
+}
