@@ -76,6 +76,17 @@
                         </TextBlock>
                     </StackPanel>
 
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <TextBlock Text="LOD" Style="{StaticResource CaptionText}" VerticalAlignment="Center" />
+                        <ComboBox x:Name="LodCombo" Margin="6,0,0,0" Width="112" SelectedIndex="0"
+                                  Style="{StaticResource DarkComboBox}" SelectionChanged="OnLodModeChanged"
+                                  ToolTip="细节层次：自动按相机距离在 LOD1/LOD2 间切换（含回滞防闪烁）">
+                            <ComboBoxItem Content="自动" />
+                            <ComboBoxItem Content="LOD1 近档" />
+                            <ComboBoxItem Content="LOD2 远档" />
+                        </ComboBox>
+                    </StackPanel>
+
                     <Button Content="复位视角" Style="{StaticResource ToolButton}" Click="OnResetViewClick"
                             ToolTip="回到默认等轴测视角（即时，不做过渡）" />
                     <Button Content="重新加载" Style="{StaticResource ToolButton}" Margin="8,0,0,0"

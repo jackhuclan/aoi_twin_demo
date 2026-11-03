@@ -1,5 +1,6 @@
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using AoiTwin.Rendering.Lod;
 
 namespace AoiTwin.Rendering.Scene;
 
@@ -73,6 +74,45 @@ public static class SceneTreeBuilder
         ArgumentNullException.ThrowIfNull(root);
         root.Children.Clear();
         root.Content = null;
+    }
+
+    /// <summary>
+    /// 装配 LOD2 合批代理（T1.6）：每个运动组一个节点 + 一个网格。
+    /// 代理网格不挂 PartTag（点选走 LOD1 几何，见 Interaction/PartPicker）；
+    /// <see cref="PartVisual.Motion"/> 按组携带平移变换，M2 运动学用与逐件装配相同的驱动方式。
+    /// </summary>
+    public static SceneAssembly BuildProxies(IReadOnlyList<LodProxyGroup> proxies, ModelVisual3D root)
+    {
+        ArgumentNullException.ThrowIfNull(proxies);
+        ArgumentNullException.ThrowIfNull(root);
+
+        Clear(root);
+
+        var visuals = new List<PartVisual>(proxies.Count);
+
+        foreach (var proxy in proxies)
+        {
+            var material = CreateMaterial(proxy.Color);
+            var mesh = new GeometryModel3D(proxy.Geometry, material)
+            {
+                BackMaterial = material,
+            };
+
+            var group = new Model3DGroup();
+            group.Children.Add(mesh);
+
+            var motion = new TranslateTransform3D();
+            var visual = new ModelVisual3D
+            {
+                Content = group,
+                Transform = motion,
+            };
+
+            root.Children.Add(visual);
+            visuals.Add(new PartVisual(proxy.DisplayName, visual, group, motion));
+        }
+
+        return new SceneAssembly(visuals, proxies.Count);
     }
 
     /// <summary>

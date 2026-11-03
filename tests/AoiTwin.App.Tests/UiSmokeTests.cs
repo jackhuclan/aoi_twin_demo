@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Media3D;
+using AoiTwin.Rendering.Lod;
 using System.Windows.Threading;
 using AoiTwin.App.ViewModels;
 using AoiTwin.App.Views;
@@ -91,11 +92,33 @@ public class UiSmokeTests
                 PumpUntilCompleted(loadTask);
                 Assert.False(twin.HasError, twin.DetailText);
                 Assert.True(twin.HasScene);
-                Assert.Equal(10, twin.Scene!.Parts.Count);
+                Assert.Equal(10, twin.Package!.Near.Parts.Count);
                 Assert.Equal(10, viewport.SceneRoot.Children.Count);
                 Assert.Equal(10, PartTag.CollectTagged(viewport.SceneRoot).Count);
                 Assert.Contains("已装配", twin.StatusText);
                 Assert.Equal(100, twin.ProgressPercent);
+                ForceLayout(twinView);
+
+                // LOD 两档（T1.6）：远档合批代理 + 距离切换 + 锁定模式
+                Assert.Equal(LodLevel.L1, twin.ActiveLod);
+                Assert.Equal("LOD1 中模 · 自动", twin.LodText);
+                twin.SetLodMode(TwinLodMode.Far);
+                Assert.Equal(LodLevel.L2, twin.ActiveLod);
+                Assert.Equal(5, viewport.SceneRoot.Children.Count);
+                Assert.Contains("LOD2", twin.LodText);
+                twin.SetLodMode(TwinLodMode.Near);
+                Assert.Equal(10, viewport.SceneRoot.Children.Count);
+
+                // 自动档：拉远相机越过远阈值后切 LOD2，拉回后恢复 LOD1
+                // （VM 内部 250ms 节流，连续两次调用需间隔一个评估周期）
+                twin.SetLodMode(TwinLodMode.Auto);
+                twin.OnCameraMoved(new Point3D(30, -30, 20));
+                Assert.Equal(LodLevel.L2, twin.ActiveLod);
+                Assert.Equal(5, viewport.SceneRoot.Children.Count);
+                Thread.Sleep(300);
+                twin.OnCameraMoved(new Point3D(0.5, -0.5, 1.0));
+                Assert.Equal(LodLevel.L1, twin.ActiveLod);
+                Assert.Equal(10, viewport.SceneRoot.Children.Count);
                 ForceLayout(twinView);
 
                 // 视角书签（T1.5）：4 预置 + 保存/持久化/删除，切换时长硬顶 800ms

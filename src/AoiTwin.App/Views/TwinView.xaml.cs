@@ -20,10 +20,15 @@ public partial class TwinView : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
         DataContextChanged += OnDataContextChanged;
+        Viewport.FrameRendered += OnViewportFrame;
     }
 
     /// <summary>视口实例（测试与场景挂载需要编程访问）。</summary>
     public Rendering.Viewport.TwinViewport3D TwinViewport => Viewport;
+
+    /// <summary>渲染帧 → 自动 LOD 评估（VM 内部按 250ms 节流，开销可忽略）。</summary>
+    private void OnViewportFrame(object? sender, TimeSpan delta)
+        => _viewModel?.OnCameraMoved(Viewport.Camera.Position);
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
@@ -82,6 +87,22 @@ public partial class TwinView : UserControl
 
     private void OnDeleteBookmarkClick(object sender, RoutedEventArgs e)
         => _viewModel?.DeleteSelectedBookmark();
+
+    /// <summary>LOD 模式切换（XAML 里 SelectedIndex=0 会在初始化时触发一次，此时视图模型未就绪）。</summary>
+    private void OnLodModeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_viewModel is null || LodCombo is null)
+        {
+            return;
+        }
+
+        _viewModel.SetLodMode(LodCombo.SelectedIndex switch
+        {
+            1 => TwinLodMode.Near,
+            2 => TwinLodMode.Far,
+            _ => TwinLodMode.Auto,
+        });
+    }
 
     private void OnResetViewClick(object sender, RoutedEventArgs e) => Viewport.ResetView();
 
