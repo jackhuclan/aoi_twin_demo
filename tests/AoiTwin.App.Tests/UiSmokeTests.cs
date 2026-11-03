@@ -134,6 +134,22 @@ public class UiSmokeTests
                 Assert.Null(twin.SelectedPartId);
                 ForceLayout(twinView);
 
+                // 布局切换（T4.1 FR-M1-15）：沉浸全屏 ≤1s，3D 场景不受影响（不重建视口）
+                var layoutWatch = System.Diagnostics.Stopwatch.StartNew();
+                twin.ToggleImmersiveCommand.Execute(null);
+                ForceLayout(twinView);
+                layoutWatch.Stop();
+                Assert.True(layoutWatch.ElapsedMilliseconds <= 1000, $"布局切换 {layoutWatch.ElapsedMilliseconds}ms 超出 1s");
+                Assert.True(twin.IsImmersive);
+                Assert.Equal("退出全屏", twin.ImmersiveToggleText);
+                Assert.Equal(10, viewport.SceneRoot.Children.Count); // 3D 场景未被重建
+
+                twin.ToggleImmersiveCommand.Execute(null);
+                ForceLayout(twinView);
+                Assert.False(twin.IsImmersive);
+                Assert.Equal(10, viewport.SceneRoot.Children.Count);
+                ForceLayout(twinView);
+
                 // 视角书签（T1.5）：4 预置 + 保存/持久化/删除，切换时长硬顶 800ms
                 Assert.Equal(4, twin.Bookmarks.Count);
                 Assert.All(twin.Bookmarks, b => Assert.True(b.IsPreset));

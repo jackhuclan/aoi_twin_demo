@@ -18,7 +18,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- ===== 页头：装配状态 / 帧探针 / 视角操作 ===== -->
+        <!-- ===== 页头：装配状态 / LOD / 帧探针 / 视角与布局操作 ===== -->
         <Border Style="{StaticResource Card}" Padding="14,10">
             <Grid>
                 <Grid.RowDefinitions>
@@ -93,6 +93,9 @@
                             Command="{Binding ReloadCommand}" ToolTip="重新装配资产包（资产更新后使用）" />
                     <Button x:Name="ProbeToggleButton" Content="隐藏帧探针" Style="{StaticResource ToolButton}"
                             Margin="8,0,0,0" Click="OnToggleProbeClick" />
+                    <Button Content="{Binding ImmersiveToggleText}" Style="{StaticResource AccentButton}"
+                            Margin="8,0,0,0" Command="{Binding ToggleImmersiveCommand}"
+                            ToolTip="沉浸全屏 3D：隐藏右侧面板与书签栏（FR-M1-15，切换 ≤ 1s）" />
                 </StackPanel>
 
                 <!-- 装配进度：加载期间才显示 -->
@@ -103,8 +106,8 @@
             </Grid>
         </Border>
 
-        <!-- ===== 视角书签（T1.5）：4 预置 + 自定义，切换带 ≤800ms 过渡 ===== -->
-        <Border Grid.Row="1" Style="{StaticResource Card}" Padding="14,8" Margin="0,10,0,0">
+        <!-- ===== 视角书签（T1.5）：4 预置 + 自定义，切换带 ≤800ms 过渡（沉浸模式下隐藏） ===== -->
+        <Border x:Name="BookmarkBar" Grid.Row="1" Style="{StaticResource Card}" Padding="14,8" Margin="0,10,0,0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -123,7 +126,6 @@
                           SelectedItem="{Binding SelectedBookmark, Mode=TwoWay}"
                           SelectionChanged="OnBookmarkSelectionChanged"
                           ToolTip="选择预置或自定义视角（切换过渡 ≤ 800ms）">
-                    <!-- 自定义模板不透传 DisplayMemberPath，选择框/下拉项统一用显式模板 -->
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Display, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
@@ -147,8 +149,8 @@
             </Grid>
         </Border>
 
-        <!-- ===== 视口 + 右侧台账信息区（T1.8；T4.1 在此扩展 2D 面板与停靠/全屏） ===== -->
-        <Grid Grid.Row="2" Margin="0,12,0,0">
+        <!-- ===== 视口 + 右侧停靠区（T4.1：3D 与 2D 面板共存，可停靠/全屏） ===== -->
+        <Grid x:Name="ContentGrid" Grid.Row="2" Margin="0,12,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -160,47 +162,136 @@
                 <rend:TwinViewport3D x:Name="Viewport" />
             </Border>
 
-            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center" VerticalAlignment="Stretch"
-                          Background="Transparent" ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
-                          ShowsPreview="False" />
+            <GridSplitter x:Name="DockSplitter" Grid.Column="1" Width="6" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" Background="Transparent"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns" ShowsPreview="False" />
 
-            <Border Grid.Column="2" CornerRadius="6"
+            <Border x:Name="RightDock" Grid.Column="2" CornerRadius="6"
                     BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
                     Background="{StaticResource SurfaceBrush}">
                 <Grid Margin="12,10,12,12">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="部件台账" Style="{StaticResource CaptionText}" />
+                    <!-- 分段页签 -->
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="DockTab0" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
+                                     Content="部件台账" IsChecked="True" ToolTip="在册部件与选中详情（T1.8）" />
+                        <RadioButton x:Name="DockTab1" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
+                                     Content="配方树" Margin="4,0,0,0" ToolTip="当前检测配方（M2 接入实时数据）" />
+                        <RadioButton x:Name="DockTab2" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
+                                     Content="图像映射" Margin="4,0,0,0" ToolTip="晶圆缺陷映射条（M2 接入实时流）" />
+                        <RadioButton x:Name="DockTab3" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
+                                     Content="直方图" Margin="4,0,0,0" ToolTip="缺陷尺寸直方图与光源反射光谱（M3 接入）" />
+                    </StackPanel>
 
-                    <ListBox x:Name="PartList" Grid.Row="1" Margin="0,8,0,0"
-                             Style="{StaticResource PlainListBox}"
-                             ItemsSource="{Binding PartSummaries}"
-                             SelectedItem="{Binding SelectedPartSummary, Mode=TwoWay}"
-                             DisplayMemberPath="Display"
-                             ToolTip="在册部件（点击选中并在 3D 中描边）" />
+                    <Grid Grid.Row="1" Margin="0,8,0,0">
+                        <!-- ===== 页签 0：部件台账（T1.8） ===== -->
+                        <Grid Visibility="{Binding IsChecked, Converter={StaticResource BoolToVis}, ElementName=DockTab0}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                    <Border Grid.Row="2" Margin="0,10,0,0" Padding="10,8"
-                            Background="{StaticResource SurfaceAltBrush}" CornerRadius="4">
-                        <StackPanel>
-                            <TextBlock Text="{Binding SelectionHint}" FontWeight="SemiBold" FontSize="12.5"
-                                       Foreground="{StaticResource AccentBrush}"
-                                       TextTrimming="CharacterEllipsis" />
-                            <ItemsControl ItemsSource="{Binding SelectedPartLines}" Margin="0,4,0,0">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}" FontSize="11.5" Margin="0,2,0,0"
-                                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                                   FontFamily="{StaticResource MonoFont}"
-                                                   TextTrimming="CharacterEllipsis" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
+                            <ListBox x:Name="PartList"
+                                     Style="{StaticResource PlainListBox}"
+                                     ItemsSource="{Binding PartSummaries}"
+                                     SelectedItem="{Binding SelectedPartSummary, Mode=TwoWay}"
+                                     DisplayMemberPath="Display"
+                                     ToolTip="在册部件（点击选中并在 3D 中描边）" />
+
+                            <Border Grid.Row="1" Margin="0,10,0,0" Padding="10,8"
+                                    Background="{StaticResource SurfaceAltBrush}" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SelectionHint}" FontWeight="SemiBold" FontSize="12.5"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <ItemsControl ItemsSource="{Binding SelectedPartLines}" Margin="0,4,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" FontSize="11.5" Margin="0,2,0,0"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           FontFamily="{StaticResource MonoFont}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- ===== 页签 1：配方树（M1 静态占位，M2 接入实时配方） ===== -->
+                        <ScrollViewer Visibility="{Binding IsChecked, Converter={StaticResource BoolToVis}, ElementName=DockTab1}"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <Border Background="{StaticResource AccentSoftBrush}" CornerRadius="4"
+                                        Padding="10,7" HorizontalAlignment="Stretch">
+                                    <StackPanel>
+                                        <TextBlock Text="AOI-M1 · 默认配方" FontWeight="SemiBold" FontSize="12.5"
+                                                   Foreground="{StaticResource TextPrimaryBrush}" />
+                                        <TextBlock Text="版本 v3 · 生效中 · M2 接入实时下发"
+                                                   Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </Border>
+                                <ItemsControl Margin="0,10,0,0">
+                                    <ItemsControl.Items>
+                                        <TextBlock Text="├ 检测程序" Style="{StaticResource CaptionText}" />
+                                        <TextBlock Text="│   ├ 上料定位 · 已启用" Style="{StaticResource CaptionText}" Margin="14,3,0,0" />
+                                        <TextBlock Text="│   └ 高度补偿 · ±0.50 mm" Style="{StaticResource CaptionText}" Margin="14,3,0,0" />
+                                        <TextBlock Text="├ 检测项" Style="{StaticResource CaptionText}" Margin="0,6,0,0" />
+                                        <TextBlock Text="│   ├ 焊球桥连 · 0.08 mm²" Style="{StaticResource CaptionText}" Margin="14,3,0,0" />
+                                        <TextBlock Text="│   ├ 缺件 · 3 px" Style="{StaticResource CaptionText}" Margin="14,3,0,0" />
+                                        <TextBlock Text="│   └ 偏移 · ±0.15 mm" Style="{StaticResource CaptionText}" Margin="14,3,0,0" />
+                                        <TextBlock Text="└ 光源方案 · 环形白光 85%" Style="{StaticResource CaptionText}" Margin="0,6,0,0" />
+                                    </ItemsControl.Items>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- ===== 页签 2：图像映射条（M1 占位示意，M2 接入实时结果流） ===== -->
+                        <Grid Visibility="{Binding IsChecked, Converter={StaticResource BoolToVis}, ElementName=DockTab2}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="最近一片晶圆 · 缺陷映射" Style="{StaticResource CaptionText}" />
+                            <UniformGrid x:Name="WaferMapStrip" Grid.Row="1" Rows="8" Columns="8"
+                                         Margin="0,10,0,0" />
+                            <TextBlock Grid.Row="2" Text="灰=良品 · 红=缺陷 · 黄=边缘临界（示意数据，M2 接入实时流）"
+                                       Style="{StaticResource CaptionText}" Margin="0,8,0,0"
+                                       TextWrapping="Wrap" />
+                        </Grid>
+
+                        <!-- ===== 页签 3：直方图 / 光谱（M3 接入） ===== -->
+                        <Grid Visibility="{Binding IsChecked, Converter={StaticResource BoolToVis}, ElementName=DockTab3}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="4" Padding="10">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="缺陷尺寸直方图" FontWeight="SemiBold" FontSize="12.5"
+                                               Foreground="{StaticResource TextPrimaryBrush}" />
+                                    <TextBlock Text="批次缺陷分布按尺寸分桶统计（M3 接入时序档案）"
+                                               Style="{StaticResource CaptionText}" Margin="0,4,0,0"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Row="1" Background="{StaticResource SurfaceAltBrush}" CornerRadius="4"
+                                    Padding="10" Margin="0,10,0,0">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="光源反射光谱" FontWeight="SemiBold" FontSize="12.5"
+                                               Foreground="{StaticResource TextPrimaryBrush}" />
+                                    <TextBlock Text="环形光源各波段反射率曲线（M3 接入量测数据）"
+                                               Style="{StaticResource CaptionText}" Margin="0,4,0,0"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Grid>
                 </Grid>
             </Border>
         </Grid>

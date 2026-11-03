@@ -137,6 +137,26 @@ public sealed partial class TwinSceneViewModel : ObservableObject
     /// <summary>选中对象变化（视图据此更新描边；partId 为空表示清除）。</summary>
     public event EventHandler<string?>? SelectionChanged;
 
+    /// <summary>
+    /// 右侧停靠区当前页：0 部件台账 / 1 配方树 / 2 图像映射 / 3 直方图·光谱（T4.1）。
+    /// 配方树与图像映射在 M1 为静态占位（M2/M3 接入实时数据），版式与交互先定型。
+    /// </summary>
+    [ObservableProperty]
+    private int _dockIndex;
+
+    /// <summary>沉浸全屏 3D（T4.1 FR-M1-15）：隐藏右侧停靠区与书签栏，切换 ≤ 1s。</summary>
+    [ObservableProperty]
+    private bool _isImmersive;
+
+    /// <summary>全屏切换按钮文本。</summary>
+    public string ImmersiveToggleText => IsImmersive ? "退出全屏" : "全屏 3D";
+
+    partial void OnIsImmersiveChanged(bool value) => OnPropertyChanged(nameof(ImmersiveToggleText));
+
+    /// <summary>切换沉浸全屏（按钮命令）。</summary>
+    [RelayCommand]
+    private void ToggleImmersive() => IsImmersive = !IsImmersive;
+
     /// <summary>LOD 模式（自动/锁定近档/锁定远档）。</summary>
     [ObservableProperty]
     private TwinLodMode _lodMode = TwinLodMode.Auto;

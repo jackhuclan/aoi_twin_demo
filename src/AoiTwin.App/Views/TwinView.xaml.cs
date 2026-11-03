@@ -1,5 +1,7 @@
 using System.Windows;
+using System.Linq;
 using System.Windows.Controls;
+using System.Windows.Media;
 using AoiTwin.App.ViewModels;
 using AoiTwin.Rendering.Camera;
 
@@ -23,6 +25,7 @@ public partial class TwinView : UserControl
         DataContextChanged += OnDataContextChanged;
         Viewport.FrameRendered += OnViewportFrame;
         Viewport.SceneClicked += OnSceneClicked;
+        BuildPlaceholderWaferMap();
     }
 
     /// <summary>视口实例（测试与场景挂载需要编程访问）。</summary>
@@ -101,9 +104,69 @@ public partial class TwinView : UserControl
         {
             _viewModel.BookmarkRequested += OnBookmarkRequested;
             _viewModel.SelectionChanged += OnSelectionChanged;
+            _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+            ApplyImmersive(_viewModel.IsImmersive);
 
             // 叠加层跟随视图生命周期重建
             _outline = new Rendering.Interaction.SelectionOutlineFx(Viewport.OverlayRoot);
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(TwinSceneViewModel.IsImmersive) && _viewModel is not null)
+        {
+            ApplyImmersive(_viewModel.IsImmersive);
+        }
+    }
+
+    /// <summary>
+    /// 沉浸全屏（T4.1 FR-M1-15）：隐藏右侧停靠区、分栏条与书签栏，3D 铺满。
+    /// 仅改可视性，不动视口本身——布局切换对 3D 帧率零影响（无场景重建）。
+    /// </summary>
+    private void ApplyImmersive(bool immersive)
+    {
+        var dockVisibility = immersive ? Visibility.Collapsed : Visibility.Visible;
+        RightDock.Visibility = dockVisibility;
+        DockSplitter.Visibility = dockVisibility;
+        BookmarkBar.Visibility = dockVisibility;
+
+        // 折叠右侧列本身（列宽不随子元素可视性变化）
+        ContentGrid.ColumnDefinitions[2].Width = immersive ? new GridLength(0) : new GridLength(290);
+    }
+
+    /// <summary>图像映射占位（T4.1）：8×8 晶圆示意数据，M2 换成实时结果流。</summary>
+    private void BuildPlaceholderWaferMap()
+    {
+        // 稳定的伪随机：同一版式每次渲染一致（截图核对与验收都要求可复现）
+        var random = new Random(20261103);
+        var dies = new[]
+        {
+            Brushes.Transparent,
+            new SolidColorBrush(Color.FromRgb(0x24, 0x40, 0x36)),
+            new SolidColorBrush(Color.FromRgb(0x2E, 0x54, 0x44)),
+            new SolidColorBrush(Color.FromRgb(0xE5, 0x48, 0x4D)),
+            new SolidColorBrush(Color.FromRgb(0xF5, 0xA6, 0x23)),
+        };
+
+        foreach (var _ in Enumerable.Range(0, 64))
+        {
+            var roll = random.NextDouble();
+            var brush = roll switch
+            {
+                < 0.06 => dies[3],   // 缺陷
+                < 0.12 => dies[4],   // 边缘临界
+                < 0.25 => dies[1],
+                _ => dies[2],        // 良品
+            };
+
+            WaferMapStrip.Children.Add(new System.Windows.Shapes.Rectangle
+            {
+                Fill = brush,
+                RadiusX = 2,
+                RadiusY = 2,
+                Margin = new Thickness(1.5),
+            });
         }
     }
 
