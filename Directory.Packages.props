@@ -16,7 +16,7 @@
 
   <!-- T1.3 起由 AoiTwin.Rendering 引用 -->
   <ItemGroup Label="3D 渲染">
-    <PackageVersion Include="HelixToolkit.Wpf" Version="2.26.0" />
+    <PackageVersion Include="HelixToolkit.Wpf" Version="3.1.2" />
   </ItemGroup>
 
   <!-- T1.2 资产校验工具：GLB 解析 -->

@@ -68,6 +68,16 @@ public class UiSmokeTests
                 Assert.True(replay.TotalSeconds > 0);
 
                 // 强制布局：模板应用 + 绑定求值 + 资源查找
+                var twinView = new TwinView();
+                ForceLayout(twinView);
+
+                // 3D 视口（T1.3）：相机就位、场景挂载点已挂入视口、探针未在无窗口环境下启动
+                var viewport = twinView.TwinViewport;
+                Assert.NotNull(viewport.Viewport.Camera);
+                Assert.False(viewport.Probe.IsRunning); // Loaded 未触发前不订阅渲染循环
+                Assert.True(viewport.IsFrameProbeVisible);
+                Assert.False(viewport.HasLongFrame);
+
                 var replayView = new ReplayView { DataContext = replay };
                 ForceLayout(replayView);
 
@@ -80,6 +90,9 @@ public class UiSmokeTests
                 var main = new MainViewModel(monitor, replay, recordings);
                 var window = new global::AoiTwin.App.MainWindow(main);
                 Assert.Same(main, window.DataContext);
+
+                // 3D 场景页为主页签（页序见 MainViewModel）
+                Assert.Equal(0, main.SelectedTabIndex);
 
                 window.Close();
                 replay.Dispose();
