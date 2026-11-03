@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using AoiTwin.Rendering.Camera;
 using AoiTwin.Rendering.Diagnostics;
 using HelixToolkit.Wpf;
 
@@ -75,6 +76,9 @@ public sealed class TwinViewport3D : UserControl
         Viewport.Children.Add(BuildFootprint());
         Viewport.Children.Add(BuildLights());
 
+        // 必须在 ResetView 之前创建：复位要取消进行中的过渡
+        CameraAnimator = new CameraAnimator();
+
         SceneRoot = new ModelVisual3D();
         OverlayRoot = new ModelVisual3D();
         Viewport.Children.Add(SceneRoot);
@@ -130,6 +134,13 @@ public sealed class TwinViewport3D : UserControl
     /// <summary>帧时间探针：渲染循环挂点（<see cref="FrameTimeProbe.Frame"/>）+ 滚动统计。</summary>
     public FrameTimeProbe Probe { get; }
 
+    /// <summary>相机过渡驱动（T1.5）：书签切换走 <see cref="AnimateTo"/>，不直接改相机属性。</summary>
+    public CameraAnimator CameraAnimator { get; }
+
+    /// <summary>当前投影相机（视口始终持有透视相机；缺失视为装配错误）。</summary>
+    public ProjectionCamera Camera => Viewport.Camera as ProjectionCamera
+        ?? throw new InvalidOperationException("视口未持有投影相机");
+
     /// <summary>每渲染帧回调（M2 运动学插值挂点；UI 线程，不得阻塞）。</summary>
     public event EventHandler<TimeSpan>? FrameRendered;
 
@@ -153,11 +164,26 @@ public sealed class TwinViewport3D : UserControl
         set => SetValue(HasLongFrameProperty, value);
     }
 
-    /// <summary>复位到默认等轴测视角（不做动画；T1.5 的书签切换才带过渡）。</summary>
+    /// <summary>复位到默认等轴测视角（不做动画；书签切换才带过渡）。</summary>
     public void ResetView()
     {
+        CameraAnimator.Cancel();
         Viewport.Camera = new PerspectiveCamera(DefaultPosition, DefaultTarget - DefaultPosition, new Vector3D(0, 0, 1), 45);
     }
+
+    /// <summary>采集当前相机位姿（保存书签用）。</summary>
+    public CameraPose CapturePose() => CameraPose.FromCamera(Camera);
+
+    /// <summary>立即套用位姿（无过渡；测试与初始化用）。</summary>
+    public void ApplyPose(CameraPose pose) => pose.ApplyTo(Camera);
+
+    /// <summary>
+    /// 平滑切换到位姿（T1.5）。返回标称过渡时长（≤ 760ms，满足 FR-M1-06 的 800ms 判据）。
+    /// </summary>
+    public TimeSpan AnimateTo(CameraPose pose) => CameraAnimator.AnimateTo(Camera, pose);
+
+    /// <summary>默认等轴测视角（书签「复位」与初始化的共同来源）。</summary>
+    public static CameraPose DefaultPose { get; } = new(DefaultPosition, DefaultTarget);
 
     /// <summary>按当前场景包围盒贴合视角（T1.4 加载完成后调用）。</summary>
     public void ZoomExtents() => Viewport.ZoomExtents(0);

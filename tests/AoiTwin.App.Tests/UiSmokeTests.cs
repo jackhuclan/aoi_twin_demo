@@ -1,11 +1,13 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using AoiTwin.App.ViewModels;
 using AoiTwin.App.Views;
 using AoiTwin.Core.Bus;
 using AoiTwin.Core.Recording;
+using AoiTwin.Rendering.Camera;
 using AoiTwin.Rendering.Scene;
 using Xunit;
 
@@ -72,7 +74,9 @@ public class UiSmokeTests
 
                 // 3D 场景页（T1.3/T1.4）：视口 + 真实资产包装配
                 var twin = new TwinSceneViewModel(
-                    AssetPackageLocator.LocateCatalog(), AssetPackageLocator.LocateAssetsRoot());
+                    AssetPackageLocator.LocateCatalog(),
+                    AssetPackageLocator.LocateAssetsRoot(),
+                    new CameraBookmarkService(Path.Combine(dir, "bookmarks.json")));
                 var twinView = new TwinView { DataContext = twin };
                 ForceLayout(twinView);
 
@@ -93,6 +97,24 @@ public class UiSmokeTests
                 Assert.Contains("已装配", twin.StatusText);
                 Assert.Equal(100, twin.ProgressPercent);
                 ForceLayout(twinView);
+
+                // 视角书签（T1.5）：4 预置 + 保存/持久化/删除，切换时长硬顶 800ms
+                Assert.Equal(4, twin.Bookmarks.Count);
+                Assert.All(twin.Bookmarks, b => Assert.True(b.IsPreset));
+
+                var target = new CameraPose(new Point3D(0.6, -2.6, 1.6), new Point3D(0, 0, 0.8));
+                var duration = viewport.AnimateTo(target);
+                Assert.True(duration.TotalMilliseconds <= 800, $"过渡 {duration.TotalMilliseconds}ms 超出判据");
+                Assert.True(viewport.CameraAnimator.IsRunning);
+                viewport.CameraAnimator.Cancel(); // 无窗口环境不推帧，取消即可
+
+                twin.NewBookmarkName = "作业视角";
+                Assert.True(twin.SaveBookmark(target), twin.BookmarkHint);
+                Assert.Equal(5, twin.Bookmarks.Count);
+                Assert.Contains(twin.Bookmarks, b => !b.IsPreset && b.Name == "作业视角");
+                Assert.True(File.Exists(Path.Combine(dir, "bookmarks.json")));
+                Assert.True(twin.DeleteSelectedBookmark(), twin.BookmarkHint);
+                Assert.Equal(4, twin.Bookmarks.Count);
 
                 var replayView = new ReplayView { DataContext = replay };
                 ForceLayout(replayView);

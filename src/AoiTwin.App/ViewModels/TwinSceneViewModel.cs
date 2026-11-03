@@ -1,7 +1,9 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Media.Media3D;
 using System.Windows.Threading;
+using AoiTwin.Rendering.Camera;
 using AoiTwin.Rendering.Scene;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -20,6 +22,7 @@ public sealed partial class TwinSceneViewModel : ObservableObject
     private readonly string _catalogPath;
     private readonly string _assetsRoot;
     private readonly Dispatcher _dispatcher;
+    private readonly CameraBookmarkService _bookmarkService;
     private ModelVisual3D? _sceneRoot;
     private bool _loading;
 
@@ -31,13 +34,31 @@ public sealed partial class TwinSceneViewModel : ObservableObject
 
     /// <summary>测试用：显式指定资产包位置。</summary>
     public TwinSceneViewModel(string catalogPath, string assetsRoot)
+        : this(catalogPath, assetsRoot, new CameraBookmarkService())
+    {
+    }
+
+    /// <summary>测试用：显式指定资产包位置与书签存储（避免污染真实用户配置）。</summary>
+    public TwinSceneViewModel(string catalogPath, string assetsRoot, CameraBookmarkService bookmarkService)
     {
         _catalogPath = catalogPath;
         _assetsRoot = assetsRoot;
+        _bookmarkService = bookmarkService;
 
         // 视口装配必须在 UI 线程；显式持有 Dispatcher，避免测试/后台上下文里依赖同步上下文恢复
         _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+
+        RefreshBookmarks();
     }
+
+    /// <summary>视角书签（预置 + 自定义），下拉框数据源。</summary>
+    public ObservableCollection<CameraBookmark> Bookmarks { get; } = [];
+
+    /// <summary>正在刷新书签列表（保存/删除后重选时抑制过渡动画，避免视角被程序性重置）。</summary>
+    public bool IsRefreshingBookmarks { get; private set; }
+
+    /// <summary>请求视图执行一次相机过渡（视图负责动画，VM 不持有相机）。</summary>
+    public event EventHandler<CameraPose>? BookmarkRequested;
 
     [ObservableProperty]
     private bool _isLoading;
@@ -58,6 +79,18 @@ public sealed partial class TwinSceneViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _hasScene;
+
+    /// <summary>当前选中的视角书签（切到预置/自定义即触发过渡）。</summary>
+    [ObservableProperty]
+    private CameraBookmark? _selectedBookmark;
+
+    /// <summary>保存书签时用的名称（留空则自动命名）。</summary>
+    [ObservableProperty]
+    private string _newBookmarkName = string.Empty;
+
+    /// <summary>书签操作提示（保存成功/重名/上限淘汰等一行反馈）。</summary>
+    [ObservableProperty]
+    private string _bookmarkHint = "预置 4 视角 · 自定义书签保存在本机";
 
     public LoadedScene? Scene { get; private set; }
 
@@ -158,10 +191,94 @@ public sealed partial class TwinSceneViewModel : ObservableObject
         }
     }
 
+    /// <summary>从磁盘重载书签并刷新下拉框（预览/删除后调用）。</summary>
+    public void RefreshBookmarks()
+    {
+        _bookmarkService.Load();
+
+        IsRefreshingBookmarks = true;
+        try
+        {
+            SelectedBookmark = null;
+            Bookmarks.Clear();
+            foreach (var bookmark in _bookmarkService.All)
+            {
+                Bookmarks.Add(bookmark);
+            }
+
+            SelectedBookmark = Bookmarks.FirstOrDefault(b => b.IsPreset) ?? Bookmarks.FirstOrDefault();
+        }
+        finally
+        {
+            IsRefreshingBookmarks = false;
+        }
+    }
+
+    /// <summary>把当前相机位姿存为自定义书签（重名覆盖，与预置重名给出提示而非崩溃）。</summary>
+    public bool SaveBookmark(CameraPose pose)
+    {
+        var name = string.IsNullOrWhiteSpace(NewBookmarkName)
+            ? $"视角 {_bookmarkService.Custom.Count + 1}"
+            : NewBookmarkName.Trim();
+
+        try
+        {
+            var saved = _bookmarkService.Save(name, pose);
+            RefreshBookmarks();
+            SelectByName(saved.Name);
+            NewBookmarkName = string.Empty;
+            BookmarkHint = $"已保存「{saved.Name}」· {_bookmarkService.Custom.Count}/{CameraBookmarkService.MaxCustomBookmarks}";
+            return true;
+        }
+        catch (ArgumentException ex)
+        {
+            BookmarkHint = ex.Message;
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            BookmarkHint = $"书签写入失败：{ex.Message}";
+            return false;
+        }
+    }
+
+    /// <summary>删除当前选中的自定义书签（预置不可删）。</summary>
+    public bool DeleteSelectedBookmark()
+    {
+        if (SelectedBookmark is not { } selected)
+        {
+            BookmarkHint = "先选一个书签";
+            return false;
+        }
+
+        if (selected.IsPreset)
+        {
+            BookmarkHint = "预置视角不可删除";
+            return false;
+        }
+
+        var removed = _bookmarkService.Delete(selected.Name);
+        RefreshBookmarks();
+        BookmarkHint = removed ? $"已删除「{selected.Name}」" : "书签已不存在";
+        return removed;
+    }
+
+    /// <summary>激活当前选中书签（视图收到事件后执行 ≤800ms 过渡）。</summary>
+    public void ActivateSelectedBookmark()
+    {
+        if (SelectedBookmark is { } selected)
+        {
+            BookmarkRequested?.Invoke(this, selected.Pose);
+        }
+    }
+
+    private void SelectByName(string name)
+        => SelectedBookmark = Bookmarks.FirstOrDefault(b => string.Equals(b.Name, name, StringComparison.Ordinal))
+            ?? SelectedBookmark;
+
     /// <summary>重新装配（资产包更新、LOD 切换后使用）。</summary>
     [RelayCommand]
-    private async Task ReloadAsync()
-    {
+    private async Task ReloadAsync()    {
         if (_sceneRoot is null || _loading)
         {
             return;
