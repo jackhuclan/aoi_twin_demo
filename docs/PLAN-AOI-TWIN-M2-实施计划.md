@@ -169,5 +169,5 @@ TA.15 跟随 ← TA.4                       TA.18 长跑 ← 全部 → TA.19 �
 | TA.16 占位/装载状态 | ✅ | 本阶段提交 |
 | TA.17 回放回归 | ✅ | 本阶段提交（独立工程 `tests/AoiTwin.Regression.Tests`） |
 | TA.9 / TA.18 真机窗口 | 🏭 待现场 | |
-| TA.19 性能报告（离线探针 + 报告） | 🟡 | `docs/m2-perf-report.md`（现场数据待 TA.18） |
-| TA.20 验收与文档 | ⏳ | |
+| TA.19 性能报告（离线探针 + 报告） | 🟡 | `docs/m2-perf-report.md`（离线 7 探针全绿；真机/核显帧率与长跑待 TA.18） |
+| TA.20 验收与文档 | ✅ | `docs/m2-acceptance-checklist.md`、README/PRD/白皮书同步、M3 冻结清单（`609a326`） |
