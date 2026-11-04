@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media.Media3D;
 using System.Windows.Threading;
+using AoiTwin.App.Services;
 using AoiTwin.Core.Bus;
 using AoiTwin.Core.Kinematics;
 using AoiTwin.Rendering.Camera;
@@ -89,6 +90,11 @@ public sealed partial class TwinSceneViewModel : ObservableObject
 
     /// <summary>通道配色文件源（TA.5；null = 走 LightChannelPalette.Default 八色）。</summary>
     public LightChannelPaletteFileSource? PaletteSource { get; }
+
+    /// <summary>部件钻取面板（TA.12，FR-M2-08）：选中即开实时会话，取消即关。</summary>
+    public DrillDownViewModel DrillDown { get; } = new();
+
+    private PartDrillDownService? _drillDownService;
 
     /// <summary>3D 视觉 VM（TA.4）：位姿/光学/Wafer 双缓冲的唯一持有者，驱动器每帧读取。</summary>
     public TwinVisualViewModel Visual { get; }
@@ -395,6 +401,7 @@ public sealed partial class TwinSceneViewModel : ObservableObject
         {
             SelectionHint = "点击 3D 模型或在列表中选择部件";
             SelectionChanged?.Invoke(this, null);
+            _drillDownService?.Close();
             return;
         }
 
@@ -403,6 +410,7 @@ public sealed partial class TwinSceneViewModel : ObservableObject
         {
             SelectionHint = "点击 3D 模型或在列表中选择部件";
             SelectionChanged?.Invoke(this, null);
+            _drillDownService?.Close();
             return;
         }
 
@@ -417,6 +425,18 @@ public sealed partial class TwinSceneViewModel : ObservableObject
         SelectedPartLines.Add($"包围盒：{bounds.SizeX:F2} × {bounds.SizeY:F2} × {bounds.SizeZ:F2} m");
         SelectedPartLines.Add($"资产：{entry.Lod?.L1 ?? "—"}");
         SelectionChanged?.Invoke(this, partId);
+        OpenDrillDown(partId, entry.Name);
+    }
+
+    /// <summary>打开/切换钻取会话（TA.12；懒建 service，随 VisualHub 生命周期）。</summary>
+    private void OpenDrillDown(string partId, string partName)
+    {
+        _drillDownService ??= new PartDrillDownService(
+            VisualHub,
+            Visual,
+            DrillDown,
+            PartSummaries.ToDictionary(p => p.PartId, p => p.Name, StringComparer.Ordinal));
+        _drillDownService.Open(partId);
     }
 
     private static string FormatAxes(IReadOnlyList<string> axes)

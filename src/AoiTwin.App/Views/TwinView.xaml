@@ -185,9 +185,45 @@
                                      Content="图像映射" Margin="4,0,0,0" ToolTip="晶圆缺陷映射条（M2 接入实时流）" />
                         <RadioButton x:Name="DockTab3" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
                                      Content="直方图" Margin="4,0,0,0" ToolTip="缺陷尺寸直方图与光源反射光谱（M3 接入）" />
+                        <RadioButton x:Name="DockTab4" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
+                                     Content="部件详情" Margin="4,0,0,0" ToolTip="选中部件的实时详情：IO 状态/寿命计数/最近报警（TA.12）" />
                     </StackPanel>
 
                     <Grid Grid.Row="1" Margin="0,8,0,0">
+                        <!-- ===== 页签 4：部件详情（TA.12 FR-M2-08） ===== -->
+                        <Grid Visibility="{Binding IsChecked, Converter={StaticResource BoolToVis}, ElementName=DockTab4}"
+                              DataContext="{Binding DrillDown}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="{Binding OpticsSummary}" FontSize="11" Margin="0,2,0,0"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock FontSize="11" Margin="0,2,0,0" Foreground="{DynamicResource TextSecondaryBrush}">
+                                    <Run Text="寿命计数：" /><Run Text="{Binding LifeCount, Mode=OneWay}" />
+                                    <Run Text="  ·  最近状态：" /><Run Text="{Binding LastStatusAt, Mode=OneWay}" />
+                                </TextBlock>
+                            </StackPanel>
+                            <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,8,0,0" Padding="10">
+                                <DockPanel>
+                                    <TextBlock Text="IO 状态" DockPanel.Dock="Top" FontSize="12" FontWeight="SemiBold" />
+                                    <ListBox ItemsSource="{Binding IoLines}" FontSize="11"
+                                             Background="Transparent" BorderThickness="0" />
+                                </DockPanel>
+                            </Border>
+                            <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,8,0,0" Padding="10">
+                                <DockPanel>
+                                    <TextBlock Text="最近报警" DockPanel.Dock="Top" FontSize="12" FontWeight="SemiBold" />
+                                    <ListBox ItemsSource="{Binding Alarms}" FontSize="11"
+                                             Background="Transparent" BorderThickness="0" />
+                                </DockPanel>
+                            </Border>
+                        </Grid>
+
                         <!-- ===== 页签 0：部件台账（T1.8） ===== -->
                         <Grid Visibility="{Binding IsChecked, Converter={StaticResource BoolToVis}, ElementName=DockTab0}">
                             <Grid.RowDefinitions>
