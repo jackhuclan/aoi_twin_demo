@@ -19,6 +19,7 @@ public partial class TwinView : UserControl
     private Rendering.Interaction.SelectionOutlineFx? _outline;
     private Rendering.Dynamics.MotionSyncDriver? _motionDriver;
     private Rendering.Dynamics.OpticsSyncDriver? _opticsDriver;
+    private Rendering.Dynamics.ScanFrustumDriver? _scanFrustumDriver;
 
     public TwinView()
     {
@@ -38,6 +39,9 @@ public partial class TwinView : UserControl
 
     /// <summary>光学状态驱动（TA.5，测试直接驱动单帧用）。</summary>
     public Rendering.Dynamics.OpticsSyncDriver? OpticsDriver => _opticsDriver;
+
+    /// <summary>线扫视野锥驱动（TA.6，测试直接驱动单帧用）。</summary>
+    public Rendering.Dynamics.ScanFrustumDriver? ScanFrustumDriver => _scanFrustumDriver;
 
     /// <summary>渲染帧 → 自动 LOD 评估（VM 内部按 250ms 节流，开销可忽略）。</summary>
     private void OnViewportFrame(object? sender, TimeSpan delta)
@@ -111,6 +115,8 @@ public partial class TwinView : UserControl
         _motionDriver = null;
         _opticsDriver?.Dispose();
         _opticsDriver = null;
+        _scanFrustumDriver?.Dispose();
+        _scanFrustumDriver = null;
 
         _viewModel = e.NewValue as TwinSceneViewModel;
 
@@ -138,6 +144,13 @@ public partial class TwinView : UserControl
                 () => _viewModel.PaletteSource,
                 () => _viewModel.Assembly);
             _opticsDriver.OnFrame();
+
+            // 线扫视野锥与扫描进度（TA.6）：直接订阅 Optics Topic 过滤 ScanProgress
+            _scanFrustumDriver = new Rendering.Dynamics.ScanFrustumDriver(
+                Viewport,
+                _viewModel.VisualHub,
+                () => _viewModel.Assembly);
+            _scanFrustumDriver.OnFrame();
         }
     }
 
