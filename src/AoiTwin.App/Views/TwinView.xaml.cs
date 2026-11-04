@@ -21,6 +21,7 @@ public partial class TwinView : UserControl
     private Rendering.Dynamics.OpticsSyncDriver? _opticsDriver;
     private Rendering.Dynamics.ScanFrustumDriver? _scanFrustumDriver;
     private Rendering.Dynamics.WaferMapDriver? _waferMapDriver;
+    private Rendering.Dynamics.DefectPointDriver? _defectPointDriver;
 
     public TwinView()
     {
@@ -46,6 +47,9 @@ public partial class TwinView : UserControl
 
     /// <summary>Wafer Map 纹理驱动（TA.7，测试直接驱动单帧用）。</summary>
     public Rendering.Dynamics.WaferMapDriver? WaferMapDriver => _waferMapDriver;
+
+    /// <summary>缺陷点云驱动（TA.8；TA.14 的 2D→3D 高亮经此接线）。</summary>
+    public Rendering.Dynamics.DefectPointDriver? DefectPointDriver => _defectPointDriver;
 
     /// <summary>渲染帧 → 自动 LOD 评估（VM 内部按 250ms 节流，开销可忽略）。</summary>
     private void OnViewportFrame(object? sender, TimeSpan delta)
@@ -123,6 +127,8 @@ public partial class TwinView : UserControl
         _scanFrustumDriver = null;
         _waferMapDriver?.Dispose();
         _waferMapDriver = null;
+        _defectPointDriver?.Dispose();
+        _defectPointDriver = null;
 
         _viewModel = e.NewValue as TwinSceneViewModel;
 
@@ -164,6 +170,13 @@ public partial class TwinView : UserControl
                 _viewModel.Visual,
                 () => _viewModel.Assembly);
             _waferMapDriver.OnFrame();
+
+            // 缺陷点云（TA.8）：按等级分池 512 点/块增量追加
+            _defectPointDriver = new Rendering.Dynamics.DefectPointDriver(
+                Viewport,
+                _viewModel.Visual,
+                () => _viewModel.Assembly);
+            _defectPointDriver.OnFrame();
         }
     }
 

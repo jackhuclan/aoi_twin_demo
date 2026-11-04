@@ -71,6 +71,12 @@ public sealed class TwinVisualViewModel : IDisposable
 
     public IWaferDataViewModel WaferQueue { get; } = new WaferUploadQueue();
 
+    /// <summary>
+    /// 缺陷批队列（TA.8）：与 WaferQueue 同源双发（同一 OnResult 内先入纹理队列再入缺陷队列，
+    /// 顺序一致），渲染层独立消费——纹理驱动与缺陷驱动各取所需，互不抢占。
+    /// </summary>
+    public ConcurrentQueue<IReadOnlyList<DefectRecord>> DefectBatches { get; } = new();
+
     /// <summary>消息处理异常计数（>0 即降态：对应部件可能停留在旧值，渲染不中断）。</summary>
     public long HandlerErrorCount => Interlocked.Read(ref _handlerErrors);
 
@@ -162,7 +168,11 @@ public sealed class TwinVisualViewModel : IDisposable
         }
     }
 
-    private void OnResult(WaferResult result) => WaferQueue.Enqueue(result);
+    private void OnResult(WaferResult result)
+    {
+        WaferQueue.Enqueue(result);
+        DefectBatches.Enqueue(result.Defects); // 同源双发（见 DefectBatches 注释）
+    }
 
     private Action<T> Guarded<T>(TwinTopic topic, Action<T> inner)
         where T : ITwinMessage
