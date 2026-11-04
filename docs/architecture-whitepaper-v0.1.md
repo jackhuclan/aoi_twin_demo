@@ -1,7 +1,8 @@
-# AOI 数字孪生架构白皮书 v0.1（M1 收口版）
+# AOI 数字孪生架构白皮书 v0.1（M1 收口 + M2 增量）
 
 > 目标读者：参与 M2/M3 开发与三期「复用至 PL/EL 机台」的工程师。
-> 本文说明 M1 冻结的类库边界、数据链路与扩展点。
+> 本文说明冻结的类库边界、数据链路与扩展点。§1–§7 为 M1 收口版原文（仍有效），
+> §8 为 M2 交付的架构增量。
 
 ## 1. 总体结构
 
@@ -100,3 +101,74 @@ M2 的运动映射、M3 的分析都建立在 PartId 主键上，机台切换不
   （本机远程会话裸渲染循环仅 ~32fps，无法作有效判据，见 `docs/m1-perf-report.md`）；
 - M2 主题：Hub → VisualViewModel → 部件节点 Offset 的实时运动映射、状态徽标、缺陷热力叠加；
 - M3 主题：批次时序档案、光衰预测、缺陷趋势（`MockScenario.decayChannel` 已埋素材）。
+
+---
+
+## 8. M2 架构增量（实时数据映射与状态同步）
+
+### 8.1 新增一层：AoiTwin.ViewModel
+
+```
+AoiTwin.App ──▶ AoiTwin.Rendering ──┐
+    │                                ├──▶ AoiTwin.ViewModel ──▶ AoiTwin.Core
+    └────────────────────────────────┘
+```
+
+`AoiTwin.ViewModel` 是 **net10.0 纯数据工程，不引用 WindowsBase**：位姿引擎、双缓冲快照、
+上传/缺陷队列、配色表、钻取与缺陷列表都在这里，可被无头测试直接驱动。
+它同时是「渲染线程 ↔ 数据线程」的唯一汇合点——数据线程只写不可变快照，渲染线程只读引用。
+
+| 关注点 | 落点 | 关键约束 |
+|---|---|---|
+| 位姿 | `MotionPoseEngine` + `PoseSnapshot` | 每部件双缓冲（两块 16 元素缓冲轮换写、写完换引用），帧内零分配 |
+| 运动学 | `Core/Kinematics`（标定换算 + 环形 32 样本插值） | 缺标定键恒等降级，不阻塞渲染 |
+| 队列 | `WaferUploadQueue`（有界 8 片）、`DefectBatches` | 同源双发：纹理与点云各自消费，互不抢占 |
+| 配色 | `LightChannelPalette` + 文件源 | 三表（通道/缺陷等级/状态），热加载，坏配置保旧值 |
+
+### 8.2 节流链路
+
+```
+适配器 ──Publish──▶ RealtimeHub ──ThrottledSink(策略) ──▶ TwinVisualViewModel
+                          ▲                    │
+                ThrottlePolicyFileSource       └ 轴：200ms 窗口 **按键合并**（PartId|AxisName）
+                  （热加载，坏配置保旧值）           状态/光学/结果：直推不过滤
+```
+
+**坑（已用测试锁住）**：策略文件只能表达「窗口 + KeepLatest」，表达不了 `MergeKey`（委托）。
+不补默认合并键，同一窗口内 X/Y/Z 会互相顶掉——逐轴消息只剩最后一条，等于丢轴。
+`TwinVisualViewModel.NormalizeMotionPolicy` 统一补键。
+
+### 8.3 渲染层：驱动器 + 叠加视觉
+
+| 驱动器 | 职责 | 关键设计 |
+|---|---|---|
+| `MotionSyncDriver` | 每帧把位姿写进 `TranslateTransform3D.Offset` | 只改 Offset，不重建树；LOD2 按运动组找驱动件随动 |
+| `OpticsSyncDriver` | 8 通道变色 + 同轴亮度 | M1 材质已 `Freeze()` → 走叠加视觉（8 段程序化环 + 发光壳），基线材质零侵入 |
+| `ScanFrustumDriver` | 视野锥 + 扫描进度线 | 3 个 `LinesVisual3D`；`LinesVisual3D` 是 `Visual3D` 不是 `Model3D` |
+| `WaferMapDriver` | 整片纹理替换 | `WriteableBitmap.WritePixels`，几何与材质引用零重建 |
+| `DefectPointDriver` | 点云增量 | 按等级分池、512 点/块、批内 `Buffer/Flush`（逐点 `Add` 是 O(N²)，1 万点 1070ms） |
+| `HandlingSyncDriver` | 晶圆占位 + Cassette 槽位 | 占位壳按需 attach/detach；25 槽共享一份冻结几何只换材质；状态 1s 节流 |
+
+**FX 按需渲染**：`FxOverlay` 独立子树，空 FX 时整体退出 `OverlayRoot`（不进 Draw Call）；
+句柄持有内容引用，被同键替换后变 no-op（否则旧句柄会误删新内容）。
+
+### 8.4 DI 纪律（一次真实事故的教训）
+
+M2 曾出现**假接线**：`App` 注册了引擎与配色，但 `TwinSceneViewModel` 有无参构造，
+容器选了它 → 自建 hub + 恒等标定引擎。界面照常打开、单测全绿，真机数据一条都到不了 3D，
+且 µm 被当米（位移放大 1e6 倍）。
+
+现在的约束：
+
+1. 注册表只有一份（`AppServices.AddAoiTwinApp`），`App` 与 `DiCompositionTests` 共用；
+2. ViewModel 的 DI 构造**只接收服务参数**，不自建基础设施；
+3. 接口型依赖必须显式注册（只注册具体类型时，可选参数会静默取 `null` 跳过整条链路）；
+4. `DiCompositionTests` 用真实容器断言「场景 VM 拿到的 hub 就是容器里的 hub」。
+
+### 8.5 性能约束（NFR-13，回归门禁）
+
+帧内禁止堆分配，实测口径见 `docs/m2-perf-report.md`：
+
+- 自有链路（插值合成 + 标定 + VM 刷新）**0 B**；纹理/点云空帧 **0 B**；
+- 整帧 **72 B** = `TranslateTransform3D` 三个分量各装箱一个 `double`（WPF 固定成本，应用层无法消除）；
+- 热路径禁忌：`ConcurrentDictionary.Values`、`ToList()`、字符串操作、LINQ——`PerfProbeTests` 会让它们变红。
