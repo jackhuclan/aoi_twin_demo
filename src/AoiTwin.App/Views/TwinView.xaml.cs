@@ -34,6 +34,7 @@ public partial class TwinView : UserControl
         DataContextChanged += OnDataContextChanged;
         Viewport.FrameRendered += OnViewportFrame;
         Viewport.SceneClicked += OnSceneClicked;
+        Viewport.SceneRightClicked += OnSceneRightClicked;
         BuildPlaceholderWaferMap();
     }
 
@@ -79,6 +80,25 @@ public partial class TwinView : UserControl
         var ray = Viewport.RayFrom(position);
         var hit = BuildPicker(package).Pick(ray.Origin, ray.Direction);
         _viewModel.SelectPart(hit?.PartId);
+    }
+
+    /// <summary>右键诊断跳转（TA.13 FR-M2-09）：拾取部件 → VM 按类型分类 → 切到诊断页签。</summary>
+    private void OnSceneRightClicked(object? sender, System.Windows.Point position)
+    {
+        if (_viewModel?.Package is not { } package)
+        {
+            return;
+        }
+
+        var ray = Viewport.RayFrom(position);
+        var hit = BuildPicker(package).Pick(ray.Origin, ray.Direction);
+        if (hit is null)
+        {
+            return;
+        }
+
+        _viewModel.OpenDiagnostic(hit.PartId);
+        DockTab5.IsChecked = true; // 切到诊断页签
     }
 
     /// <summary>

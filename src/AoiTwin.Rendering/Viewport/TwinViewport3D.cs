@@ -124,9 +124,14 @@ public sealed class TwinViewport3D : UserControl
         // 点选（T1.8）：按下/抬起位移小于阈值才算点击（避免与旋转手势冲突）
         Viewport.PreviewMouseLeftButtonDown += (_, e) => _mouseDownPoint = e.GetPosition(Viewport);
         Viewport.PreviewMouseLeftButtonUp += OnPreviewMouseUp;
+
+        // 右键（TA.13 诊断跳转）：同样按拖拽阈值区分点击
+        Viewport.PreviewMouseRightButtonDown += (_, e) => _rightDownPoint = e.GetPosition(Viewport);
+        Viewport.PreviewMouseRightButtonUp += OnPreviewMouseRightButtonUp;
     }
 
     private Point? _mouseDownPoint;
+    private Point? _rightDownPoint;
 
     private void OnPreviewMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
@@ -153,6 +158,23 @@ public sealed class TwinViewport3D : UserControl
 
     /// <summary>用户在视口内完成一次点击（拖拽手势不触发）；坐标为视口客户区坐标。</summary>
     public event EventHandler<Point>? SceneClicked;
+
+    /// <summary>右键点击（TA.13 诊断跳转）：与左键同阈值判定，拖拽不触发。</summary>
+    public event EventHandler<Point>? SceneRightClicked;
+
+    private void OnPreviewMouseRightButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_rightDownPoint is not { } down)
+        {
+            return;
+        }
+
+        _rightDownPoint = null;
+        if ((e.GetPosition(Viewport) - down).Length < 4)
+        {
+            SceneRightClicked?.Invoke(this, e.GetPosition(Viewport));
+        }
+    }
 
     /// <summary>Helix 视口本体（相机手势、视图立方体、坐标轴均由其内置）。</summary>
     public HelixViewport3D Viewport { get; }

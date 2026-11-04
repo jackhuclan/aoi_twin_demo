@@ -190,9 +190,30 @@
                                      Content="直方图" Margin="4,0,0,0" ToolTip="缺陷尺寸直方图与光源反射光谱（M3 接入）" />
                         <RadioButton x:Name="DockTab4" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
                                      Content="部件详情" Margin="4,0,0,0" ToolTip="选中部件的实时详情：IO 状态/寿命计数/最近报警（TA.12）" />
+                        <RadioButton x:Name="DockTab5" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
+                                     Content="诊断" Margin="4,0,0,0" ToolTip="右键 3D 部件跳转对应 2D 诊断页（TA.13）" />
                     </StackPanel>
 
                     <Grid Grid.Row="1" Margin="0,8,0,0">
+                        <!-- ===== 页签 5：诊断跳转（TA.13 FR-M2-09） ===== -->
+                        <Grid Visibility="{Binding IsChecked, Converter={StaticResource BoolToVis}, ElementName=DockTab5}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding DiagnosticTitle}" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="右键 3D 部件即按类型跳转到对应 2D 诊断页"
+                                           FontSize="11" Margin="0,2,0,0"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
+                            <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,8,0,0" Padding="10">
+                                <ListBox ItemsSource="{Binding DiagnosticLines}" FontSize="11"
+                                         Background="Transparent" BorderThickness="0" />
+                            </Border>
+                        </Grid>
+
                         <!-- ===== 页签 4：部件详情（TA.12 FR-M2-08） ===== -->
                         <Grid Visibility="{Binding IsChecked, Converter={StaticResource BoolToVis}, ElementName=DockTab4}"
                               DataContext="{Binding DrillDown}">

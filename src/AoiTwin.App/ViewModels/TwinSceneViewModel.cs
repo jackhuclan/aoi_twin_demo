@@ -94,6 +94,13 @@ public sealed partial class TwinSceneViewModel : ObservableObject
     /// <summary>部件钻取面板（TA.12，FR-M2-08）：选中即开实时会话，取消即关。</summary>
     public DrillDownViewModel DrillDown { get; } = new();
 
+    /// <summary>诊断面板分类（TA.13：相机参数 / 光源控制 / 轴调试 / 通用诊断）。</summary>
+    [ObservableProperty]
+    private string _diagnosticTitle = "诊断（未选择部件）";
+
+    /// <summary>诊断面板内容行（按部件类型给出对应 2D 诊断入口）。</summary>
+    public ObservableCollection<string> DiagnosticLines { get; } = [];
+
     private PartDrillDownService? _drillDownService;
 
     /// <summary>3D 视觉 VM（TA.4）：位姿/光学/Wafer 双缓冲的唯一持有者，驱动器每帧读取。</summary>
@@ -374,6 +381,60 @@ public sealed partial class TwinSceneViewModel : ObservableObject
     /// <summary>
     /// 选中部件（T1.8）。空/未知的 PartId 视为清除选中（3D 空白处点击也是这个语义）。
     /// </summary>
+    /// <summary>
+    /// 右键诊断跳转（TA.13，FR-M2-09）：按台账 module 决定诊断分类，并返回应切到的页签索引。
+    /// OPTICS 相机件 → 相机参数；OPTICS 光源件 → 光源控制；MOTION/STAGE 有轴件 → 轴调试；其余 → 通用诊断。
+    /// </summary>
+    public int OpenDiagnostic(string partId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(partId);
+
+        var part = Package?.Near.Find(partId);
+        var entry = part?.Entry;
+        var module = entry?.Module ?? "";
+        var isCamera = partId.StartsWith("CAMERA", StringComparison.Ordinal);
+        var isLight = partId.StartsWith("LIGHT", StringComparison.Ordinal);
+        var hasAxis = entry?.Axes.Count > 0;
+
+        DiagnosticLines.Clear();
+        string title;
+        if (module == "OPTICS" && isCamera)
+        {
+            title = $"相机参数 · {entry?.Name ?? partId}";
+            DiagnosticLines.Add($"部件：{partId}");
+            DiagnosticLines.Add("2D 页：相机参数（曝光/增益/触发模式）");
+            DiagnosticLines.Add("实时：Optics Topic CameraParam（M3 接入参数编辑）");
+        }
+        else if (module == "OPTICS" && isLight)
+        {
+            title = $"光源控制 · {entry?.Name ?? partId}";
+            DiagnosticLines.Add($"部件：{partId}");
+            DiagnosticLines.Add("2D 页：光源控制（8 通道强度/亮度）");
+            DiagnosticLines.Add($"配色：assets/light-channel-colors.json（热加载）");
+        }
+        else if (hasAxis)
+        {
+            title = $"轴调试 · {entry?.Name ?? partId}";
+            DiagnosticLines.Add($"部件：{partId}");
+            DiagnosticLines.Add($"轴：{string.Join(" / ", entry!.Axes)}");
+            DiagnosticLines.Add("2D 页：轴调试（点动/回零/软限位）");
+            DiagnosticLines.Add("实时：Motion Topic 轴快照（200ms 合并 → 60fps 插值）");
+        }
+        else
+        {
+            title = $"通用诊断 · {entry?.Name ?? partId}";
+            DiagnosticLines.Add($"部件：{partId}");
+            DiagnosticLines.Add($"模块：{module}");
+            DiagnosticLines.Add("2D 页：部件详情（IO 状态/报警历史）");
+        }
+
+        DiagnosticTitle = title;
+        return DiagnosticTabIndex;
+    }
+
+    /// <summary>诊断页签索引（右侧第五个分段页签之后的固定位置）。</summary>
+    public const int DiagnosticTabIndex = 5;
+
     public void SelectPart(string? partId)
     {
         SelectedPartSummary = string.IsNullOrEmpty(partId)

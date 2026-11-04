@@ -173,6 +173,17 @@ public class UiSmokeTests
                     new StatusEvent("ROBOT", "E-404", Severity.Info, null, DateTimeOffset.UtcNow));
                 Assert.Equal(1, twinView.FxOverlay.ActiveCount); // 解除即摘
 
+                // 右键诊断跳转（TA.13 FR-M2-09）：按部件类型分类并返回诊断页签索引
+                Assert.Equal(TwinSceneViewModel.DiagnosticTabIndex, twin.OpenDiagnostic("CAMERA"));
+                Assert.Contains("相机参数", twin.DiagnosticTitle);
+                twin.OpenDiagnostic("LIGHT_RING");
+                Assert.Contains("光源控制", twin.DiagnosticTitle);
+                twin.OpenDiagnostic("STAGE");
+                Assert.Contains("轴调试", twin.DiagnosticTitle);
+                Assert.Contains(twin.DiagnosticLines, line => line.Contains("X / Y / Z / THETA"));
+                twin.OpenDiagnostic("BASE_FRAME");
+                Assert.Contains("通用诊断", twin.DiagnosticTitle);
+
                 // 点选与台账信息区（T1.8）：列表 16 项、选中详情、清除选中
                 Assert.Equal(16, twin.PartSummaries.Count);
                 twin.SelectPart("STAGE");
