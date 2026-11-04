@@ -20,6 +20,7 @@ public partial class TwinView : UserControl
     private Rendering.Dynamics.MotionSyncDriver? _motionDriver;
     private Rendering.Dynamics.OpticsSyncDriver? _opticsDriver;
     private Rendering.Dynamics.ScanFrustumDriver? _scanFrustumDriver;
+    private Rendering.Dynamics.WaferMapDriver? _waferMapDriver;
 
     public TwinView()
     {
@@ -42,6 +43,9 @@ public partial class TwinView : UserControl
 
     /// <summary>线扫视野锥驱动（TA.6，测试直接驱动单帧用）。</summary>
     public Rendering.Dynamics.ScanFrustumDriver? ScanFrustumDriver => _scanFrustumDriver;
+
+    /// <summary>Wafer Map 纹理驱动（TA.7，测试直接驱动单帧用）。</summary>
+    public Rendering.Dynamics.WaferMapDriver? WaferMapDriver => _waferMapDriver;
 
     /// <summary>渲染帧 → 自动 LOD 评估（VM 内部按 250ms 节流，开销可忽略）。</summary>
     private void OnViewportFrame(object? sender, TimeSpan delta)
@@ -117,6 +121,8 @@ public partial class TwinView : UserControl
         _opticsDriver = null;
         _scanFrustumDriver?.Dispose();
         _scanFrustumDriver = null;
+        _waferMapDriver?.Dispose();
+        _waferMapDriver = null;
 
         _viewModel = e.NewValue as TwinSceneViewModel;
 
@@ -151,6 +157,13 @@ public partial class TwinView : UserControl
                 _viewModel.VisualHub,
                 () => _viewModel.Assembly);
             _scanFrustumDriver.OnFrame();
+
+            // Wafer Map 纹理（TA.7）：整片事件走 WritePixels，几何零重建
+            _waferMapDriver = new Rendering.Dynamics.WaferMapDriver(
+                Viewport,
+                _viewModel.Visual,
+                () => _viewModel.Assembly);
+            _waferMapDriver.OnFrame();
         }
     }
 
