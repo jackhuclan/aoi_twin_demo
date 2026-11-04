@@ -159,7 +159,7 @@ public sealed class DefectPointDriverTests : IDisposable
             driver.OnFrame();
             Assert.Equal(1, driver.PointCount);
             driver.Dispose();
-            Assert.Equal(0, viewport.OverlayRoot.Children.Count);
+            Assert.Empty(viewport.OverlayRoot.Children);
         });
     }
 

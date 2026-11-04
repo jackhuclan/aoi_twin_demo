@@ -224,6 +224,23 @@ public class UiSmokeTests
                     new Point3D(defectWorld.X + 0.3, defectWorld.Y, defectWorld.Z + 0.4), new Vector3D(0, 0, -1)));
                 Assert.Equal(101, twin.DefectList.Selected.DefectId);
 
+                // 装载状态（TA.16 FR-M2-13）：Track 占位 + Cassette 25 槽（1s 节流）
+                Assert.NotNull(twinView.HandlingDriver);
+                twinView.HandlingDriver!.OnFrame(); // 先绑定当前装配（无头环境不推帧）
+                Assert.Equal(25, twinView.HandlingDriver.SlotCount);
+                twin.VisualHub.Publish(TwinTopic.Status, new StatusEvent(
+                    "TRACK", "WAFER_IN", Severity.Info,
+                    new Dictionary<string, string> { ["WaferPresent"] = "1" }, DateTimeOffset.UtcNow));
+                twin.VisualHub.Publish(TwinTopic.Status, new StatusEvent(
+                    "LOAD_PORT", "CASSETTE", Severity.Info,
+                    new Dictionary<string, string> { ["CassetteCount"] = "18" }, DateTimeOffset.UtcNow));
+                Assert.Equal("Track 有片 · Cassette 18/25", twin.Handling.Caption);
+
+                Thread.Sleep(1050); // 1s 节流窗口
+                twinView.HandlingDriver.OnFrame();
+                Assert.True(twinView.HandlingDriver.WaferVisible);
+                Assert.Equal(18, twinView.HandlingDriver.LitSlotCount);
+
                 // 点选与台账信息区（T1.8）：列表 16 项、选中详情、清除选中
                 Assert.Equal(16, twin.PartSummaries.Count);
                 twin.SelectPart("STAGE");

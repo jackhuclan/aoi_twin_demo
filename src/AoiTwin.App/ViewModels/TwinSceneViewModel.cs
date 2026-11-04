@@ -85,6 +85,8 @@ public sealed partial class TwinSceneViewModel : ObservableObject
             new MotionPoseEngine(TeachCoordinateMapper.Load(Path.Combine(assetsRoot, "teach-calibration.json"))));
         PaletteSource = paletteSource;
 
+        Handling = new HandlingStateViewModel(VisualHub);
+
         // Result 直推可能来自数据线程：列表填充统一回 UI 线程（无头测试注入 null → 同步执行）
         DefectList = new DefectListViewModel(VisualHub, action => _dispatcher.Invoke(action));
         DefectLink = new DefectLinkService(DefectList);
@@ -97,6 +99,9 @@ public sealed partial class TwinSceneViewModel : ObservableObject
 
     /// <summary>部件钻取面板（TA.12，FR-M2-08）：选中即开实时会话，取消即关。</summary>
     public DrillDownViewModel DrillDown { get; } = new();
+
+    /// <summary>装载状态（TA.16）：Track 晶圆占位 + LoadPort Cassette 计数（状态页头徽标）。</summary>
+    public HandlingStateViewModel Handling { get; }
 
     /// <summary>2D 缺陷列表（TA.14）：订阅 Result Topic，整片替换 + 滑窗定位。</summary>
     public DefectListViewModel DefectList { get; }

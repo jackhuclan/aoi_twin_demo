@@ -110,7 +110,7 @@ public sealed class ScanFrustumDriverTests : IDisposable
             {
                 driver.OnFrame();
                 Assert.Equal(0, driver.VisualCount); // 无相机/晶圆部件：不建视觉
-                Assert.Equal(0, viewport.OverlayRoot.Children.Count);
+                Assert.Empty(viewport.OverlayRoot.Children);
             }
             finally
             {
@@ -122,7 +122,7 @@ public sealed class ScanFrustumDriverTests : IDisposable
             driver2.OnFrame();
             Assert.Equal(3, driver2.VisualCount);
             driver2.Dispose();
-            Assert.Equal(0, viewport2.OverlayRoot.Children.Count);
+            Assert.Empty(viewport2.OverlayRoot.Children);
         });
     }
 

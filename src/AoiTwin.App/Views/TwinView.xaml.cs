@@ -26,6 +26,7 @@ public partial class TwinView : UserControl
     private Rendering.Fx.AlarmPulseFx? _alarmPulse;
     private Rendering.Fx.TransportParticlesFx? _transportParticles;
     private Rendering.Camera.FollowCamera? _followCamera;
+    private Rendering.Dynamics.HandlingSyncDriver? _handlingDriver;
     private Window? _defectImageWindow;
 
     public TwinView()
@@ -65,6 +66,9 @@ public partial class TwinView : UserControl
 
     /// <summary>跟随模式（TA.15，测试直接驱动单帧用）。</summary>
     public Rendering.Camera.FollowCamera? FollowCamera => _followCamera;
+
+    /// <summary>装载状态驱动（TA.16，测试直接驱动单帧用）。</summary>
+    public Rendering.Dynamics.HandlingSyncDriver? HandlingDriver => _handlingDriver;
 
     /// <summary>渲染帧 → 自动 LOD 评估（VM 内部按 250ms 节流，开销可忽略）。</summary>
     private void OnViewportFrame(object? sender, TimeSpan delta)
@@ -232,6 +236,8 @@ public partial class TwinView : UserControl
         _alarmPulse = null;
         _fxOverlay?.Dispose();
         _fxOverlay = null;
+        _handlingDriver?.Dispose();
+        _handlingDriver = null;
 
         _viewModel = e.NewValue as TwinSceneViewModel;
 
@@ -294,6 +300,13 @@ public partial class TwinView : UserControl
                 _fxOverlay,
                 new System.Windows.Media.Media3D.Point3D(0.40, -0.62, 0.10), // Track 装载位
                 new System.Windows.Media.Media3D.Point3D(0.0, 0.0, 0.60));   // 检测位
+
+            // 装载状态（TA.16）：Track 晶圆占位 + Cassette 槽位点亮（1s 节流）
+            _handlingDriver = new Rendering.Dynamics.HandlingSyncDriver(
+                Viewport,
+                _viewModel.Handling,
+                () => _viewModel.Assembly);
+            _handlingDriver.OnFrame();
 
             // 跟随模式（TA.15）：目标 = 载台世界坐标（装配位 + 运动平移）
             _followCamera = new Rendering.Camera.FollowCamera(

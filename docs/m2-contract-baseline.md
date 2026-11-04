@@ -35,6 +35,8 @@
 | `DefectIndexEntry` / `IDefectPickSource` | `Rendering/Dynamics/*`（TA.14） | **DefectId 是 2D 列表与 3D 点云的唯一主键**：索引项含池序号/块号/块内偏移/世界坐标；上层只经 `IDefectPickSource` 访问 3D 端（风险 R-4「禁止各链路私连」） |
 | `DefectListViewModel` / `DefectRow`（TA.14） | `AoiTwin.ViewModel` | 2D 缺陷列表：整片替换 + 滑窗（`MaxRows=1000`），窗外 DefectId 定位时自动滚窗，容量恒定 |
 | `DefectLinkService` / `DefectImageViewModel`（TA.14） | `AoiTwin.App` | 2D↔3D 联动编排（高亮 ≤100ms、射线反查容差 6mm = `DefectPointDriver.DefaultPickTolerance`）与原图窗口数据 |
+| `HandlingStateViewModel`（TA.16） | `AoiTwin.ViewModel` | **Status Topic 负载契约**：`TRACK` 用 `WaferPresent`（"1"/"true"/"on"，大小写不敏感）；`LOAD_PORT` 用 `CassetteCount` + `CassetteCapacity`（缺省 25）。缺键/非法值保持旧值（NFR-15 降级） |
+| `HandlingSyncDriver`（TA.16） | `Rendering/Dynamics` | Track 晶圆占位壳按需 attach/detach（无片退出 Draw Call）；Cassette 槽位共享一份冻结几何、只换材质引用；**状态应用 1s 节流**（`ApplyInterval`），首帧无条件应用 |
 
 ## 3. 对既有实现的追加（不改契约，只加成员）
 

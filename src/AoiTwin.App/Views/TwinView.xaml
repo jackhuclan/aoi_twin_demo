@@ -38,6 +38,14 @@
                         <TextBlock Text="M1 中模 · Z 轴向上 · 米制"
                                    FontSize="11" Foreground="{StaticResource AccentBrush}" />
                     </Border>
+                    <!-- 装载状态（TA.16 FR-M2-13）：Track 占位 + Cassette 25 片计数 -->
+                    <Border Background="{StaticResource SurfaceAltBrush}" CornerRadius="3"
+                            Padding="8,2" Margin="8,0,0,0" VerticalAlignment="Center"
+                            ToolTip="Track 晶圆占位信号与 LoadPort Cassette 装载片数（Status Topic）">
+                        <TextBlock Text="{Binding Handling.Caption}" FontSize="11"
+                                   FontFamily="{StaticResource MonoFont}"
+                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                    </Border>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Margin="20,0,12,0" VerticalAlignment="Center">
