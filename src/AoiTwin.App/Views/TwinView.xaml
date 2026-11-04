@@ -88,7 +88,10 @@
                     </StackPanel>
 
                     <Button Content="复位视角" Style="{StaticResource ToolButton}" Click="OnResetViewClick"
-                            ToolTip="回到默认等轴测视角（即时，不做过渡）" />
+                            Margin="6,0,0,0" ToolTip="回到默认等轴测视角（即时，不做过渡）" />
+                    <Button x:Name="FollowButton" Content="跟随载台" Style="{StaticResource ToolButton}"
+                            Click="OnFollowClick" Margin="6,0,0,0"
+                            ToolTip="视角锁定载台实时追踪（TA.15）；再次点击解除" />
                     <Button Content="重新加载" Style="{StaticResource ToolButton}" Margin="8,0,0,0"
                             Command="{Binding ReloadCommand}" ToolTip="重新装配资产包（资产更新后使用）" />
                     <Button x:Name="ProbeToggleButton" Content="隐藏帧探针" Style="{StaticResource ToolButton}"

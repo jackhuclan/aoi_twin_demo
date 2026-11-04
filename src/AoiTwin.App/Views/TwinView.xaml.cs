@@ -25,6 +25,7 @@ public partial class TwinView : UserControl
     private Rendering.Fx.FxOverlay? _fxOverlay;
     private Rendering.Fx.AlarmPulseFx? _alarmPulse;
     private Rendering.Fx.TransportParticlesFx? _transportParticles;
+    private Rendering.Camera.FollowCamera? _followCamera;
 
     public TwinView()
     {
@@ -59,6 +60,9 @@ public partial class TwinView : UserControl
 
     /// <summary>报警脉冲（TA.11；LOD 换档后调 Refresh 重建壳）。</summary>
     public Rendering.Fx.AlarmPulseFx? AlarmPulse => _alarmPulse;
+
+    /// <summary>跟随模式（TA.15，测试直接驱动单帧用）。</summary>
+    public Rendering.Camera.FollowCamera? FollowCamera => _followCamera;
 
     /// <summary>渲染帧 → 自动 LOD 评估（VM 内部按 250ms 节流，开销可忽略）。</summary>
     private void OnViewportFrame(object? sender, TimeSpan delta)
@@ -140,6 +144,8 @@ public partial class TwinView : UserControl
         _defectPointDriver = null;
         _transportParticles?.Dispose();
         _transportParticles = null;
+        _followCamera?.Dispose();
+        _followCamera = null;
         _alarmPulse?.Dispose();
         _alarmPulse = null;
         _fxOverlay?.Dispose();
@@ -202,6 +208,16 @@ public partial class TwinView : UserControl
                 _fxOverlay,
                 new System.Windows.Media.Media3D.Point3D(0.40, -0.62, 0.10), // Track 装载位
                 new System.Windows.Media.Media3D.Point3D(0.0, 0.0, 0.60));   // 检测位
+
+            // 跟随模式（TA.15）：目标 = 载台世界坐标（装配位 + 运动平移）
+            _followCamera = new Rendering.Camera.FollowCamera(
+                Viewport,
+                () => _viewModel.Assembly?.Find("STAGE") is { } stage
+                    ? new System.Windows.Media.Media3D.Point3D(
+                        stage.Geometry.Bounds.X + (stage.Geometry.Bounds.SizeX / 2) + stage.Motion.OffsetX,
+                        stage.Geometry.Bounds.Y + (stage.Geometry.Bounds.SizeY / 2) + stage.Motion.OffsetY,
+                        stage.Geometry.Bounds.Z + (stage.Geometry.Bounds.SizeZ / 2) + stage.Motion.OffsetZ)
+                    : null);
         }
     }
 
@@ -325,6 +341,26 @@ public partial class TwinView : UserControl
             2 => TwinLodMode.Far,
             _ => TwinLodMode.Auto,
         });
+    }
+
+    /// <summary>跟随载台开关（TA.15 FR-M2-11）：切入无跳变，解除停在当前位置。</summary>
+    private void OnFollowClick(object sender, RoutedEventArgs e)
+    {
+        if (_followCamera is null)
+        {
+            return;
+        }
+
+        if (_followCamera.IsFollowing)
+        {
+            _followCamera.Stop();
+            FollowButton.Content = "跟随载台";
+        }
+        else
+        {
+            _followCamera.Start();
+            FollowButton.Content = _followCamera.IsFollowing ? "解除跟随" : "跟随载台";
+        }
     }
 
     private void OnResetViewClick(object sender, RoutedEventArgs e) => Viewport.ResetView();
