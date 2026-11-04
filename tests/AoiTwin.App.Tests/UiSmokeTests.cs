@@ -92,9 +92,9 @@ public class UiSmokeTests
                 PumpUntilCompleted(loadTask);
                 Assert.False(twin.HasError, twin.DetailText);
                 Assert.True(twin.HasScene);
-                Assert.Equal(10, twin.Package!.Near.Parts.Count);
-                Assert.Equal(10, viewport.SceneRoot.Children.Count);
-                Assert.Equal(10, PartTag.CollectTagged(viewport.SceneRoot).Count);
+                Assert.Equal(16, twin.Package!.Near.Parts.Count);
+                Assert.Equal(16, viewport.SceneRoot.Children.Count);
+                Assert.Equal(16, PartTag.CollectTagged(viewport.SceneRoot).Count);
                 Assert.Contains("已装配", twin.StatusText);
                 Assert.Equal(100, twin.ProgressPercent);
                 ForceLayout(twinView);
@@ -104,27 +104,27 @@ public class UiSmokeTests
                 Assert.Equal("LOD1 中模 · 自动", twin.LodText);
                 twin.SetLodMode(TwinLodMode.Far);
                 Assert.Equal(LodLevel.L2, twin.ActiveLod);
-                Assert.Equal(5, viewport.SceneRoot.Children.Count);
+                Assert.Equal(7, viewport.SceneRoot.Children.Count);
                 Assert.Contains("LOD2", twin.LodText);
                 twin.SetLodMode(TwinLodMode.Near);
-                Assert.Equal(10, viewport.SceneRoot.Children.Count);
+                Assert.Equal(16, viewport.SceneRoot.Children.Count);
 
                 // 自动档：拉远相机越过远阈值后切 LOD2，拉回后恢复 LOD1
                 // （VM 内部 250ms 节流，连续两次调用需间隔一个评估周期）
                 twin.SetLodMode(TwinLodMode.Auto);
                 twin.OnCameraMoved(new Point3D(30, -30, 20));
                 Assert.Equal(LodLevel.L2, twin.ActiveLod);
-                Assert.Equal(5, viewport.SceneRoot.Children.Count);
+                Assert.Equal(7, viewport.SceneRoot.Children.Count);
                 Thread.Sleep(300);
                 twin.OnCameraMoved(new Point3D(0.5, -0.5, 1.0));
                 Assert.Equal(LodLevel.L1, twin.ActiveLod);
-                Assert.Equal(10, viewport.SceneRoot.Children.Count);
+                Assert.Equal(16, viewport.SceneRoot.Children.Count);
                 ForceLayout(twinView);
 
-                // 点选与台账信息区（T1.8）：列表 10 项、选中详情、清除选中
-                Assert.Equal(10, twin.PartSummaries.Count);
-                twin.SelectPart("WAFER_STAGE");
-                Assert.Equal("WAFER_STAGE", twin.SelectedPartId);
+                // 点选与台账信息区（T1.8）：列表 16 项、选中详情、清除选中
+                Assert.Equal(16, twin.PartSummaries.Count);
+                twin.SelectPart("STAGE");
+                Assert.Equal("STAGE", twin.SelectedPartId);
                 Assert.True(twin.SelectedPartLines.Count >= 5, "选中详情行数不足");
                 Assert.Contains("STAGE", twin.SelectionHint);
                 twin.SelectPart(null);
@@ -142,12 +142,12 @@ public class UiSmokeTests
                 Assert.True(layoutWatch.ElapsedMilliseconds <= 1000, $"布局切换 {layoutWatch.ElapsedMilliseconds}ms 超出 1s");
                 Assert.True(twin.IsImmersive);
                 Assert.Equal("退出全屏", twin.ImmersiveToggleText);
-                Assert.Equal(10, viewport.SceneRoot.Children.Count); // 3D 场景未被重建
+                Assert.Equal(16, viewport.SceneRoot.Children.Count); // 3D 场景未被重建
 
                 twin.ToggleImmersiveCommand.Execute(null);
                 ForceLayout(twinView);
                 Assert.False(twin.IsImmersive);
-                Assert.Equal(10, viewport.SceneRoot.Children.Count);
+                Assert.Equal(16, viewport.SceneRoot.Children.Count);
                 ForceLayout(twinView);
 
                 // 视角书签（T1.5）：4 预置 + 保存/持久化/删除，切换时长硬顶 800ms

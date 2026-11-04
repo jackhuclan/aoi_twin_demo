@@ -14,6 +14,10 @@ public enum MotionGroup
     AxisY = 2,
     AxisZ = 3,
     Theta = 4,
+
+    // M2 追加（只加不改）：机械手与载台各有独立位姿，不能与其他组共用一个 Transform
+    Robot = 5,
+    Stage = 6,
 }
 
 /// <summary>单个合批代理：把同组部件的 L2 几何合并成一个网格，远景一次 Draw 完成。</summary>
@@ -32,6 +36,8 @@ public sealed record LodProxyGroup(
         MotionGroup.AxisY => "Y 轴组件",
         MotionGroup.AxisZ => "Z 轴组件",
         MotionGroup.Theta => "旋转台组件",
+        MotionGroup.Robot => "机械手",
+        MotionGroup.Stage => "载台组件",
         _ => "固定结构",
     };
 }
@@ -55,8 +61,16 @@ public static class LodMerger
     private static readonly IReadOnlyDictionary<string, MotionGroup> GroupOverrides =
         new Dictionary<string, MotionGroup>(StringComparer.Ordinal)
         {
-            ["CAMERA_UNIT"] = MotionGroup.AxisZ, // 相机装在 Z 行程上，随升降头运动
-            ["LIGHT_RING"] = MotionGroup.AxisZ, // 环形光源与相机同支架
+            // 光学件挂在 Z 行程上，随升降头运动
+            ["CAMERA"] = MotionGroup.AxisZ,
+            ["CAMERA_LINE_SCAN"] = MotionGroup.AxisZ,
+            ["LIGHT_RING"] = MotionGroup.AxisZ,
+            ["LIGHT_COAX"] = MotionGroup.AxisZ,
+            // 晶圆随载台运动；传输轨道固定在机架上
+            ["WAFER_CURRENT"] = MotionGroup.Stage,
+            ["STAGE"] = MotionGroup.Stage,
+            ["ROBOT"] = MotionGroup.Robot,
+            ["PRE_ALIGNER"] = MotionGroup.Theta,
         };
 
     /// <summary>按运动组把远档场景合并成代理网格列表。</summary>
@@ -99,6 +113,7 @@ public static class LodMerger
                 "Y" => MotionGroup.AxisY,
                 "Z" => MotionGroup.AxisZ,
                 "THETA" => MotionGroup.Theta,
+                "R" => MotionGroup.Robot, // 机械手径向轴（无覆盖表时的兜底）
                 _ => MotionGroup.Static,
             };
         }

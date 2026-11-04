@@ -2,9 +2,17 @@
   "scenarioName": "AOI-01-standard-shift",
   "seed": 20261103,
   "axes": [
+    { "partId": "GATE_AXIS_X", "axisName": "X", "amplitudeUm": 200000, "periodSec": 30 },
+    { "partId": "GATE_AXIS_Y", "axisName": "Y", "amplitudeUm": 150000, "periodSec": 40 },
+    { "partId": "GATE_AXIS_Z", "axisName": "Z", "amplitudeUm": 25000, "periodSec": 25 },
     { "partId": "ROBOT", "axisName": "R", "amplitudeUm": 150000, "periodSec": 45 },
-    { "partId": "ROBOT", "axisName": "Theta", "amplitudeUm": 30000, "periodSec": 60 },
-    { "partId": "STAGE", "axisName": "Z", "amplitudeUm": 8000, "periodSec": 20 }
+    { "partId": "ROBOT", "axisName": "THETA", "amplitudeUm": 30000, "periodSec": 60 },
+    { "partId": "ROBOT", "axisName": "Z", "amplitudeUm": 120000, "periodSec": 50 },
+    { "partId": "STAGE", "axisName": "X", "amplitudeUm": 100000, "periodSec": 35 },
+    { "partId": "STAGE", "axisName": "Y", "amplitudeUm": 100000, "periodSec": 35 },
+    { "partId": "STAGE", "axisName": "Z", "amplitudeUm": 8000, "periodSec": 20 },
+    { "partId": "STAGE", "axisName": "THETA", "amplitudeUm": 20000, "periodSec": 70 },
+    { "partId": "PRE_ALIGNER", "axisName": "THETA", "amplitudeUm": 25000, "periodSec": 55 }
   ],
   "lightChannels": 8,
   "decayChannel": 3,

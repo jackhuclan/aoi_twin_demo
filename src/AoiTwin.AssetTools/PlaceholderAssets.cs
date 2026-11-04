@@ -21,7 +21,9 @@ public static class PlaceholderAssets
 {
     public const string CatalogFileName = "part-catalog.json";
     public const string ModelDirName = "model";
-    public const string AssetVersion = "0.1.0";
+
+    /// <summary>资产包版本：0.2.0 = M2 部件集（16 件 / 11 轴，见 docs/m2-contract-baseline.md §4）。</summary>
+    public const string AssetVersion = "0.2.0";
     public const string MachineId = "AOI-01";
 
     /// <summary>箱体（中心 + 尺寸，米）。</summary>
@@ -85,6 +87,9 @@ public static class PlaceholderAssets
 
     /// <summary>
     /// 整机部件构成（与真实 AOI 结构对应，PartId 同时是 PLC 侧部件台账与 Raycaster 点选的唯一键）。
+    /// M2（assetVersion 0.2.0）扩到 16 件 / 11 轴：新增机械手、预对准台、线扫相机、同轴光源、
+    /// 当前晶圆、传输轨道；`WAFER_STAGE`/`CAMERA_UNIT`/`HEAD_AXIS_Z` 改名对齐数据侧命名
+    /// （见 docs/m2-contract-baseline.md §4）。
     /// </summary>
     private static List<PartSpec> Specs()
     {
@@ -112,22 +117,78 @@ public static class PlaceholderAssets
                 Lod1: [new(new Vector3(0, -0.15f, 1.29f), 0.13f, 0.95f, 0.12f)],
                 Lod2: [new(new Vector3(0, -0.15f, 1.29f), 0.13f, 0.95f, 0.12f)]),
 
-            new("HEAD_AXIS_Z", "Z 轴升降头", "MOTION", "AOI-M1", ["Z"], 150, 162, 182,
+            new("GATE_AXIS_Z", "Z 轴升降头", "MOTION", "AOI-M1", ["Z"], 150, 162, 182,
                 Lod1: [new(new Vector3(0, -0.35f, 1.12f), 0.14f, 0.14f, 0.50f)],
                 Lod2: [new(new Vector3(0, -0.35f, 1.12f), 0.14f, 0.14f, 0.50f)]),
 
-            new("CAMERA_UNIT", "检测相机单元", "OPTICS", "AOI-M1", [], 58, 66, 82,
+            // 搬运机械手：立柱 + 悬臂 + 末端叉（R/θ/Z 三轴，立柱底面为旋转轴心）
+            new("ROBOT", "搬运机械手", "MOTION", "AOI-M1", ["R", "THETA", "Z"], 214, 158, 94,
+                Lod1:
+                [
+                    new(new Vector3(0.62f, 0.30f, 0.56f), 0.11f, 0.11f, 0.32f),
+                    new(new Vector3(0.51f, 0.30f, 0.78f), 0.22f, 0.07f, 0.06f),
+                    new(new Vector3(0.38f, 0.30f, 0.75f), 0.09f, 0.06f, 0.03f),
+                ],
+                Lod2:
+                [
+                    new(new Vector3(0.62f, 0.30f, 0.56f), 0.11f, 0.11f, 0.32f),
+                    new(new Vector3(0.50f, 0.30f, 0.78f), 0.24f, 0.08f, 0.06f),
+                ]),
+
+            // 晶圆载台：X/Y/Z/θ 四轴，台面为旋转轴心
+            new("STAGE", "晶圆载台", "STAGE", "AOI-M1", ["X", "Y", "Z", "THETA"], 108, 118, 132,
+                Lod1:
+                [
+                    new(new Vector3(0, 0.10f, 0.54f), 0.52f, 0.52f, 0.08f),
+                    new(new Vector3(0, 0.10f, 0.47f), 0.30f, 0.30f, 0.06f),
+                ],
+                Lod2: [new(new Vector3(0, 0.10f, 0.54f), 0.52f, 0.52f, 0.08f)]),
+
+            // 预对准台：单 θ 轴
+            new("PRE_ALIGNER", "预对准台", "STAGE", "AOI-M1", ["THETA"], 122, 132, 150,
+                Lod1:
+                [
+                    new(new Vector3(-0.38f, 0.24f, 0.56f), 0.20f, 0.20f, 0.06f),
+                    new(new Vector3(-0.38f, 0.24f, 0.51f), 0.08f, 0.08f, 0.05f),
+                ],
+                Lod2: [new(new Vector3(-0.38f, 0.24f, 0.56f), 0.20f, 0.20f, 0.06f)]),
+
+            new("CAMERA", "检测相机", "OPTICS", "AOI-M1", [], 58, 66, 82,
                 Lod1: [new(new Vector3(0, -0.35f, 0.80f), 0.18f, 0.18f, 0.16f)],
                 Lod2: [new(new Vector3(0, -0.35f, 0.80f), 0.18f, 0.18f, 0.16f)]),
 
-            // 环形光源：L1 用 12 段拼出圆环，L2 简化为 4 段方环（保留类环形轮廓，避免材质/形状跳变）
+            // 线扫相机：横向长条（视野锥挂此件）
+            new("CAMERA_LINE_SCAN", "线扫相机", "OPTICS", "AOI-M1", [], 70, 80, 98,
+                Lod1:
+                [
+                    new(new Vector3(0, 0.02f, 0.92f), 0.34f, 0.07f, 0.08f),
+                    new(new Vector3(0, 0.02f, 0.86f), 0.10f, 0.07f, 0.05f),
+                ],
+                Lod2: [new(new Vector3(0, 0.02f, 0.92f), 0.34f, 0.08f, 0.08f)]),
+
+            // 环形光源：L1 用 12 段拼出圆环，L2 简化为 4 段方环（保留类环形轮廓，避免形状跳变）
             new("LIGHT_RING", "环形光源", "OPTICS", "AOI-M1", [], 240, 214, 120,
                 Lod1: Ring(center: new Vector3(0, -0.35f, 0.66f), radius: 0.14f, segments: 12, thickness: 0.028f),
                 Lod2: Ring(center: new Vector3(0, -0.35f, 0.66f), radius: 0.14f, segments: 4, thickness: 0.030f)),
 
-            new("WAFER_STAGE", "晶圆载台", "STAGE", "AOI-M1", ["THETA"], 108, 118, 132,
-                Lod1: [new(new Vector3(0, 0.10f, 0.54f), 0.52f, 0.52f, 0.08f)],
-                Lod2: [new(new Vector3(0, 0.10f, 0.54f), 0.52f, 0.52f, 0.08f)]),
+            // 同轴光源：相机正上方（亮度 → 自发光强度）
+            new("LIGHT_COAX", "同轴光源", "OPTICS", "AOI-M1", [], 236, 232, 208,
+                Lod1: [new(new Vector3(0, -0.35f, 0.92f), 0.11f, 0.11f, 0.06f)],
+                Lod2: [new(new Vector3(0, -0.35f, 0.92f), 0.11f, 0.11f, 0.06f)]),
+
+            // 当前晶圆：载台上方薄片（Wafer Map 纹理 + 缺陷点云挂此件）
+            new("WAFER_CURRENT", "当前晶圆", "WAFER", "AOI-M1", [], 92, 126, 176,
+                Lod1:
+                [
+                    new(new Vector3(0, 0.10f, 0.585f), 0.30f, 0.30f, 0.004f),
+                    new(new Vector3(0, 0.10f, 0.585f), 0.32f, 0.02f, 0.004f),
+                ],
+                Lod2: [new(new Vector3(0, 0.10f, 0.585f), 0.31f, 0.31f, 0.004f)]),
+
+            // 传输轨道：自上料口到载台的导轨（占位信号驱动显隐）
+            new("TRACK", "晶圆传输轨道", "HANDLING", "AOI-M1", [], 92, 102, 118,
+                Lod1: [new(new Vector3(0.16f, -0.28f, 0.56f), 0.86f, 0.07f, 0.03f)],
+                Lod2: [new(new Vector3(0.16f, -0.28f, 0.56f), 0.86f, 0.07f, 0.03f)]),
 
             new("LOAD_PORT", "上下料口", "HANDLING", "AOI-M1", [], 86, 96, 112,
                 Lod1:

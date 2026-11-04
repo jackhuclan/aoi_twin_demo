@@ -1,5 +1,5 @@
 {
-  "assetVersion": "0.1.0",
+  "assetVersion": "0.2.0",
   "machine": "AOI-01",
   "parts": [
     {
@@ -40,26 +40,81 @@
       ]
     },
     {
-      "partId": "HEAD_AXIS_Z",
+      "partId": "GATE_AXIS_Z",
       "name": "Z 轴升降头",
       "module": "MOTION",
       "model": "AOI-M1",
       "lod": {
-        "l1": "model/head_axis_z_l1.glb",
-        "l2": "model/head_axis_z_l2.glb"
+        "l1": "model/gate_axis_z_l1.glb",
+        "l2": "model/gate_axis_z_l2.glb"
       },
       "axes": [
         "Z"
       ]
     },
     {
-      "partId": "CAMERA_UNIT",
-      "name": "检测相机单元",
+      "partId": "ROBOT",
+      "name": "搬运机械手",
+      "module": "MOTION",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/robot_l1.glb",
+        "l2": "model/robot_l2.glb"
+      },
+      "axes": [
+        "R",
+        "THETA",
+        "Z"
+      ]
+    },
+    {
+      "partId": "STAGE",
+      "name": "晶圆载台",
+      "module": "STAGE",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/stage_l1.glb",
+        "l2": "model/stage_l2.glb"
+      },
+      "axes": [
+        "X",
+        "Y",
+        "Z",
+        "THETA"
+      ]
+    },
+    {
+      "partId": "PRE_ALIGNER",
+      "name": "预对准台",
+      "module": "STAGE",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/pre_aligner_l1.glb",
+        "l2": "model/pre_aligner_l2.glb"
+      },
+      "axes": [
+        "THETA"
+      ]
+    },
+    {
+      "partId": "CAMERA",
+      "name": "检测相机",
       "module": "OPTICS",
       "model": "AOI-M1",
       "lod": {
-        "l1": "model/camera_unit_l1.glb",
-        "l2": "model/camera_unit_l2.glb"
+        "l1": "model/camera_l1.glb",
+        "l2": "model/camera_l2.glb"
+      },
+      "axes": []
+    },
+    {
+      "partId": "CAMERA_LINE_SCAN",
+      "name": "线扫相机",
+      "module": "OPTICS",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/camera_line_scan_l1.glb",
+        "l2": "model/camera_line_scan_l2.glb"
       },
       "axes": []
     },
@@ -75,17 +130,37 @@
       "axes": []
     },
     {
-      "partId": "WAFER_STAGE",
-      "name": "晶圆载台",
-      "module": "STAGE",
+      "partId": "LIGHT_COAX",
+      "name": "同轴光源",
+      "module": "OPTICS",
       "model": "AOI-M1",
       "lod": {
-        "l1": "model/wafer_stage_l1.glb",
-        "l2": "model/wafer_stage_l2.glb"
+        "l1": "model/light_coax_l1.glb",
+        "l2": "model/light_coax_l2.glb"
       },
-      "axes": [
-        "THETA"
-      ]
+      "axes": []
+    },
+    {
+      "partId": "WAFER_CURRENT",
+      "name": "当前晶圆",
+      "module": "WAFER",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/wafer_current_l1.glb",
+        "l2": "model/wafer_current_l2.glb"
+      },
+      "axes": []
+    },
+    {
+      "partId": "TRACK",
+      "name": "晶圆传输轨道",
+      "module": "HANDLING",
+      "model": "AOI-M1",
+      "lod": {
+        "l1": "model/track_l1.glb",
+        "l2": "model/track_l2.glb"
+      },
+      "axes": []
     },
     {
       "partId": "LOAD_PORT",

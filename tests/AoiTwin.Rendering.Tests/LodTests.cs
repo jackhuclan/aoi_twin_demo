@@ -24,24 +24,33 @@ public sealed class LodTests : IDisposable
     {
         var package = await LodPackage.LoadAsync(CatalogPath, _root);
 
-        Assert.Equal(10, package.Near.Parts.Count);
-        Assert.Equal(10, package.Far.Parts.Count);
+        Assert.Equal(16, package.Near.Parts.Count);
+        Assert.Equal(16, package.Far.Parts.Count);
         Assert.Same(package.Near.Parts, package.PickParts);
 
-        // 分组：固定结构 / X / Y / Z（含相机与光源随动）/ 旋转台
+        // 分组（M2）：固定结构 / X / Y / Z（含光学件随动）/ 旋转台 / 机械手 / 载台（含晶圆）
         Assert.Equal(
-            new[] { MotionGroup.Static, MotionGroup.AxisX, MotionGroup.AxisY, MotionGroup.AxisZ, MotionGroup.Theta },
+            new[]
+            {
+                MotionGroup.Static, MotionGroup.AxisX, MotionGroup.AxisY, MotionGroup.AxisZ,
+                MotionGroup.Theta, MotionGroup.Robot, MotionGroup.Stage,
+            },
             package.Proxies.Select(p => p.Group));
 
         var staticProxy = package.Proxies[0];
         Assert.Equal(
-            new[] { "BASE_FRAME", "LOAD_PORT", "SAFETY_DOOR", "SIGNAL_TOWER" }.OrderBy(x => x),
+            new[] { "BASE_FRAME", "LOAD_PORT", "SAFETY_DOOR", "SIGNAL_TOWER", "TRACK" }.OrderBy(x => x),
             staticProxy.PartIds.OrderBy(x => x));
 
         var zProxy = package.Proxies[3];
         Assert.Equal(
-            new[] { "HEAD_AXIS_Z", "CAMERA_UNIT", "LIGHT_RING" }.OrderBy(x => x),
+            new[] { "GATE_AXIS_Z", "CAMERA", "CAMERA_LINE_SCAN", "LIGHT_RING", "LIGHT_COAX" }.OrderBy(x => x),
             zProxy.PartIds.OrderBy(x => x));
+
+        var stageProxy = package.Proxies[6];
+        Assert.Equal(
+            new[] { "STAGE", "WAFER_CURRENT" }.OrderBy(x => x),
+            stageProxy.PartIds.OrderBy(x => x));
     }
 
     [Fact]
@@ -54,8 +63,8 @@ public sealed class LodTests : IDisposable
         var farMeshes = package.MeshCount(LodLevel.L2);
         var reduction = 1 - (farMeshes / (double)nearMeshes);
 
-        Assert.Equal(10, nearMeshes);
-        Assert.Equal(5, farMeshes);
+        Assert.Equal(16, nearMeshes);
+        Assert.Equal(7, farMeshes);
         Assert.True(reduction >= 0.40, $"Draw Call 仅下降 {reduction:P0}（{nearMeshes}→{farMeshes}）");
     }
 
@@ -132,8 +141,8 @@ public sealed class LodTests : IDisposable
 
         var assembly = SceneTreeBuilder.BuildProxies(package.Proxies, root);
 
-        Assert.Equal(5, assembly.MeshCount);
-        Assert.Equal(5, root.Children.Count);
+        Assert.Equal(7, assembly.MeshCount);
+        Assert.Equal(7, root.Children.Count);
         Assert.Empty(PartTag.CollectTagged(root)); // 代理不打 PartId：点选走 LOD1
 
         // 每个代理节点都带平移变换（M2 运动学的驱动点）

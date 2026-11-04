@@ -30,7 +30,7 @@ public sealed class PartPickTests : IDisposable
         var package = await LodPackage.LoadAsync(CatalogPath, _root);
         var picker = PickerFor(package);
 
-        Assert.Equal(10, picker.PartCount);
+        Assert.Equal(16, picker.PartCount);
 
         // 可见性探针（六轴向外入射、首个命中必须是自己）：这是「命中率 100%」的程序化判据。
         // 点选集合固定用 LOD1 几何（PickParts），与渲染档位无关，因此 LOD2 档位下同样成立。
