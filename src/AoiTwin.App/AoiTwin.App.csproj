@@ -17,6 +17,7 @@
     <ProjectReference Include="..\AoiTwin.Adapters\AoiTwin.Adapters.csproj" />
     <ProjectReference Include="..\AoiTwin.Adapters.Mock\AoiTwin.Adapters.Mock.csproj" />
     <ProjectReference Include="..\AoiTwin.Rendering\AoiTwin.Rendering.csproj" />
+    <ProjectReference Include="..\AoiTwin.ViewModel\AoiTwin.ViewModel.csproj" />
   </ItemGroup>
 
 </Project>

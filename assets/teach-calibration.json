@@ -1,0 +1,13 @@
+[
+  { "PartId": "GATE_AXIS_X", "AxisName": "X", "Direction": "X", "Scale": 0.000001, "Sign": 1, "Offset": 0 },
+  { "PartId": "GATE_AXIS_Y", "AxisName": "Y", "Direction": "Y", "Scale": 0.000001, "Sign": 1, "Offset": 0 },
+  { "PartId": "GATE_AXIS_Z", "AxisName": "Z", "Direction": "Z", "Scale": 0.000001, "Sign": 1, "Offset": 0 },
+  { "PartId": "ROBOT", "AxisName": "R", "Direction": "NONE", "Scale": 0.000001, "Sign": 1, "Offset": 0 },
+  { "PartId": "ROBOT", "AxisName": "THETA", "Direction": "NONE", "Scale": 0.000001, "Sign": 1, "Offset": 0 },
+  { "PartId": "ROBOT", "AxisName": "Z", "Direction": "Z", "Scale": 0.000001, "Sign": 1, "Offset": 0 },
+  { "PartId": "STAGE", "AxisName": "X", "Direction": "X", "Scale": 0.000001, "Sign": 1, "Offset": 0 },
+  { "PartId": "STAGE", "AxisName": "Y", "Direction": "Y", "Scale": 0.000001, "Sign": 1, "Offset": 0 },
+  { "PartId": "STAGE", "AxisName": "Z", "Direction": "Z", "Scale": 0.000001, "Sign": 1, "Offset": 0 },
+  { "PartId": "STAGE", "AxisName": "THETA", "Direction": "NONE", "Scale": 0.000001, "Sign": 1, "Offset": 0 },
+  { "PartId": "PRE_ALIGNER", "AxisName": "THETA", "Direction": "NONE", "Scale": 0.000001, "Sign": 1, "Offset": 0 }
+]

@@ -37,6 +37,9 @@ public sealed class ThrottlePolicyFileSource : IDisposable
         _policies = initial ?? ImmutableDictionary<string, ThrottlePolicy?>.Empty;
         _lastError = initialError;
 
+        // 防抖定时器先建好再挂监视器（lambda 引用字段，避免可空性告警）
+        _debounce = new System.Threading.Timer(_ => Reload(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+
         var dir = Path.GetDirectoryName(_path);
         if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
         {
@@ -52,8 +55,6 @@ public sealed class ThrottlePolicyFileSource : IDisposable
             // 文件不存在（首次运行尚未落配置）：不监视目录，保留空表；后续 Reload 可手动触发。
             _watcher = null!;
         }
-
-        _debounce = new System.Threading.Timer(_ => Reload(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
     }
 
     private readonly string _path;

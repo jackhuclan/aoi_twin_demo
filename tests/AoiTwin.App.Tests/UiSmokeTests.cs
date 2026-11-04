@@ -121,6 +121,35 @@ public class UiSmokeTests
                 Assert.Equal(16, viewport.SceneRoot.Children.Count);
                 ForceLayout(twinView);
 
+                // 运动同步（TA.4 FR-M2-03）：轴快照 → 200ms 合并 → 位姿引擎换算 → 驱动器写 Transform
+                var stageVisual = twin.Assembly!.Find("STAGE")!;
+                Assert.Equal(0, stageVisual.Motion.OffsetX);
+                Assert.NotNull(twinView.MotionDriver);
+                twin.VisualHub.Publish(TwinTopic.Motion,
+                    new AxisSnapshot("STAGE", "X", 250_000, 0, DateTimeOffset.UtcNow));
+                Thread.Sleep(260); // 默认 200ms 合并窗口送达（端到端口径）
+                twinView.MotionDriver!.OnFrame();
+                Assert.Equal(0.25, stageVisual.Motion.OffsetX, 6); // 250000 µm × 1e-6 = 0.25 m
+
+                // 新样本进入 hold 段后位姿稳定在新值（插值推进本身由引擎单测覆盖）
+                twin.VisualHub.Publish(TwinTopic.Motion,
+                    new AxisSnapshot("STAGE", "X", 350_000, 0, DateTimeOffset.UtcNow));
+                Thread.Sleep(260); // 同样等合并窗口送达
+                twinView.MotionDriver.OnFrame();
+                Assert.Equal(0.35, stageVisual.Motion.OffsetX, 6);
+
+                // 无轴部件装配态不动（驱动器只绑定有位姿数据的部件）
+                Assert.Equal(0, twin.Assembly!.Find("BASE_FRAME")!.Motion.OffsetX);
+
+                // LOD2 代理按组随动：切远档后载台组代理位移与 STAGE 位姿一致
+                twin.SetLodMode(TwinLodMode.Far);
+                twinView.MotionDriver.OnFrame();
+                var stageProxy = twin.Assembly!.Parts
+                    .First(p => twin.ResolveDrivePartId(p.PartId) == "STAGE");
+                Assert.Equal(stageVisual.Motion.OffsetX, stageProxy.Motion.OffsetX, 6);
+                twin.SetLodMode(TwinLodMode.Near);
+                twinView.MotionDriver.OnFrame();
+
                 // 点选与台账信息区（T1.8）：列表 16 项、选中详情、清除选中
                 Assert.Equal(16, twin.PartSummaries.Count);
                 twin.SelectPart("STAGE");

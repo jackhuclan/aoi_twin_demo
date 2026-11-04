@@ -14,7 +14,7 @@ public class TwinVisualViewModelTests
         new(partId, axis, pos, 0, DateTimeOffset.UtcNow);
 
     [Fact]
-    public void Pose_buffer_is_tear_free_under_concurrent_write_read()
+    public async Task Pose_buffer_is_tear_free_under_concurrent_write_read()
     {
         var part = new MotionPartViewModel("ROBOT");
         using var stop = new CancellationTokenSource();
@@ -50,7 +50,13 @@ public class TwinVisualViewModelTests
         finally
         {
             stop.Cancel();
-            writer.Wait(TimeSpan.FromSeconds(2));
+            try
+            {
+                await writer; // 写循环只看取消令牌，取消后立即退出
+            }
+            catch (OperationCanceledException)
+            {
+            }
         }
     }
 

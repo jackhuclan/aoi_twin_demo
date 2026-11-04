@@ -4,9 +4,12 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media.Media3D;
 using System.Windows.Threading;
+using AoiTwin.Core.Bus;
+using AoiTwin.Core.Kinematics;
 using AoiTwin.Rendering.Camera;
 using AoiTwin.Rendering.Lod;
 using AoiTwin.Rendering.Scene;
+using AoiTwin.ViewModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -54,7 +57,17 @@ public sealed partial class TwinSceneViewModel : ObservableObject
     }
 
     /// <summary>测试用：显式指定资产包位置与书签存储（避免污染真实用户配置）。</summary>
-    public TwinSceneViewModel(string catalogPath, string assetsRoot, CameraBookmarkService bookmarkService)
+    /// <param name="catalogPath">台账路径。</param>
+    /// <param name="assetsRoot">资产根目录。</param>
+    /// <param name="bookmarkService">书签存储。</param>
+    /// <param name="visual">3D 视觉 VM（DI 注入共享实例；缺省自建独立 hub + 恒等标定引擎）。</param>
+    /// <param name="hub">自建 Visual 时的总线（测试发布轴数据用）。</param>
+    public TwinSceneViewModel(
+        string catalogPath,
+        string assetsRoot,
+        CameraBookmarkService bookmarkService,
+        TwinVisualViewModel? visual = null,
+        IRealtimeHub? hub = null)
     {
         _catalogPath = catalogPath;
         _assetsRoot = assetsRoot;
@@ -63,14 +76,61 @@ public sealed partial class TwinSceneViewModel : ObservableObject
         // 视口装配必须在 UI 线程；显式持有 Dispatcher，避免测试/后台上下文里依赖同步上下文恢复
         _dispatcher = Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
 
+        VisualHub = hub ?? new RealtimeHub();
+        Visual = visual ?? new TwinVisualViewModel(
+            VisualHub,
+            new MotionPoseEngine(TeachCoordinateMapper.Load(Path.Combine(assetsRoot, "teach-calibration.json"))));
+
         RefreshBookmarks();
     }
+
+    /// <summary>3D 视觉 VM（TA.4）：位姿/光学/Wafer 双缓冲的唯一持有者，驱动器每帧读取。</summary>
+    public TwinVisualViewModel Visual { get; }
+
+    /// <summary>Visual 使用的实时总线（自建实例时测试可通过它发布轴数据；DI 注入时与全局共享）。</summary>
+    public IRealtimeHub VisualHub { get; }
 
     /// <summary>两档场景包：LOD1 全保真（点选用）+ LOD2 合批代理（远档渲染用）。</summary>
     public LodPackage? Package { get; private set; }
 
     /// <summary>当前装配树（LOD 切换时重建；拾取变换与状态栏使用）。</summary>
     public SceneAssembly? Assembly { get; private set; }
+
+    /// <summary>
+    /// 装配节点名 → 运动驱动 PartId（TA.4）：LOD1 部件名透传；
+    /// LOD2 代理（装配名 = 组显示名）映射到组内首个有轴定义的部件，
+    /// 固定结构组返回 null（驱动器跳过）。代理按组随动——组内各件位姿同源。
+    /// </summary>
+    public string? ResolveDrivePartId(string assemblyPartName)
+    {
+        ArgumentNullException.ThrowIfNull(assemblyPartName);
+        var package = Package;
+        if (package is null)
+        {
+            return null;
+        }
+
+        foreach (var proxy in package.Proxies)
+        {
+            if (!string.Equals(proxy.DisplayName, assemblyPartName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            foreach (var partId in proxy.PartIds)
+            {
+                var part = package.Near.Find(partId);
+                if (part is { } entry && entry.Entry.Axes is { Count: > 0 })
+                {
+                    return partId;
+                }
+            }
+
+            return null; // 运动组内没有带轴部件（理论上只有 Static 组会走到）
+        }
+
+        return assemblyPartName; // 不是代理名 → LOD1 部件名
+    }
 
     /// <summary>当前生效的 LOD 档位。</summary>
     public LodLevel ActiveLod => _lodSelector.Current;

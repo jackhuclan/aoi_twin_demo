@@ -17,6 +17,7 @@ public partial class TwinView : UserControl
     private bool _loadRequested;
     private TwinSceneViewModel? _viewModel;
     private Rendering.Interaction.SelectionOutlineFx? _outline;
+    private Rendering.Dynamics.MotionSyncDriver? _motionDriver;
 
     public TwinView()
     {
@@ -30,6 +31,9 @@ public partial class TwinView : UserControl
 
     /// <summary>视口实例（测试与场景挂载需要编程访问）。</summary>
     public Rendering.Viewport.TwinViewport3D TwinViewport => Viewport;
+
+    /// <summary>运动同步驱动（TA.4，测试直接驱动单帧用；随 DataContext 生命周期重建）。</summary>
+    public Rendering.Dynamics.MotionSyncDriver? MotionDriver => _motionDriver;
 
     /// <summary>渲染帧 → 自动 LOD 评估（VM 内部按 250ms 节流，开销可忽略）。</summary>
     private void OnViewportFrame(object? sender, TimeSpan delta)
@@ -98,6 +102,10 @@ public partial class TwinView : UserControl
             _viewModel.SelectionChanged -= OnSelectionChanged;
         }
 
+        // 驱动器跟随上一份 DataContext 生命周期释放
+        _motionDriver?.Dispose();
+        _motionDriver = null;
+
         _viewModel = e.NewValue as TwinSceneViewModel;
 
         if (_viewModel is not null)
@@ -109,6 +117,13 @@ public partial class TwinView : UserControl
 
             // 叠加层跟随视图生命周期重建
             _outline = new Rendering.Interaction.SelectionOutlineFx(Viewport.OverlayRoot);
+
+            // 运动同步（TA.4）：帧循环挂进视口，绑定表随 LOD 装配惰性刷新
+            _motionDriver = new Rendering.Dynamics.MotionSyncDriver(
+                Viewport,
+                _viewModel.Visual,
+                () => _viewModel.Assembly,
+                _viewModel.ResolveDrivePartId);
         }
     }
 

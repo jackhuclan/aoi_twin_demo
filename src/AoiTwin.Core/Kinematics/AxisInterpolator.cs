@@ -98,4 +98,28 @@ public sealed class AxisInterpolator(int capacity = 32)
             }
         }
     }
+
+    /// <summary>
+    /// 该时刻是否处于保持段（早于首样本或晚于末样本）——
+    /// 引擎据此跳过重建：保持段内插值结果恒定，可直接复用上次合成快照。
+    /// </summary>
+    public bool IsHolding(DateTimeOffset now)
+    {
+        lock (_gate)
+        {
+            if (_count == 0)
+            {
+                return true;
+            }
+
+            var first = _ring[_head];
+            if (now <= first.Time)
+            {
+                return true;
+            }
+
+            var last = _ring[(_head + _count - 1) % _ring.Length];
+            return now >= last.Time;
+        }
+    }
 }
