@@ -184,6 +184,46 @@ public class UiSmokeTests
                 twin.OpenDiagnostic("BASE_FRAME");
                 Assert.Contains("通用诊断", twin.DiagnosticTitle);
 
+                // 缺陷 2D/3D 双向联动（TA.14 FR-M2-07）：整片结果 → 列表 + 点云索引同源
+                twin.VisualHub.Publish(TwinTopic.Result, new WaferResult(
+                    "WFR-SMOKE",
+                    new WaferMapSnapshot(2, 2, [0, 1, 2, 0]),
+                    [
+                        new DefectRecord(101, 12.0, 0.0, 6.0, "Scratch", 120),
+                        new DefectRecord(102, 0.0, 18.0, 14.0, "Particle", 90),
+                        new DefectRecord(103, -25.0, -25.0, 3.0, "Residue", 60),
+                    ],
+                    TimeSpan.FromSeconds(6.8),
+                    DateTimeOffset.UtcNow));
+                twinView.DefectPointDriver!.OnFrame();
+
+                Assert.Equal(3, twin.DefectList.Rows.Count);
+                Assert.Equal(3, twinView.DefectPointDriver.IndexedCount);
+                Assert.Contains("WFR-SMOKE", twin.DefectList.Caption);
+
+                // 2D 选中 → 3D 高亮（同源主键寻址）
+                twin.DefectList.Selected = twin.DefectList.Rows[1];
+                Assert.Equal(102, twinView.DefectPointDriver.HighlightedDefectId);
+                Assert.True(twin.DefectLink.LastHighlightElapsed <= TimeSpan.FromMilliseconds(100));
+
+                // 3D 点选 → 反查 DefectId → 列表定位 → 原图窗口请求
+                var wafer = twin.Assembly!.Find("WAFER_CURRENT")!.Geometry.Bounds;
+                var defectWorld = new Point3D(
+                    wafer.X + wafer.SizeX / 2 + 12.0e-3,
+                    wafer.Y + wafer.SizeY / 2,
+                    wafer.Z + wafer.SizeZ + 0.001);
+                Assert.True(twin.FocusDefectFrom3D(
+                    new Point3D(defectWorld.X, defectWorld.Y, defectWorld.Z + 0.4), new Vector3D(0, 0, -1)));
+                Assert.Equal(101, twinView.DefectPointDriver.HighlightedDefectId);
+                Assert.Equal(101, twin.DefectList.Selected!.DefectId);
+                Assert.Equal(101L, twin.DefectLink.LastImageDefectId);
+                Assert.Equal(1, twin.DefectLink.ImageOpenCount);
+
+                // 空白射线：不误选（无命中时列表选中保持不变）
+                Assert.False(twin.FocusDefectFrom3D(
+                    new Point3D(defectWorld.X + 0.3, defectWorld.Y, defectWorld.Z + 0.4), new Vector3D(0, 0, -1)));
+                Assert.Equal(101, twin.DefectList.Selected.DefectId);
+
                 // 点选与台账信息区（T1.8）：列表 16 项、选中详情、清除选中
                 Assert.Equal(16, twin.PartSummaries.Count);
                 twin.SelectPart("STAGE");

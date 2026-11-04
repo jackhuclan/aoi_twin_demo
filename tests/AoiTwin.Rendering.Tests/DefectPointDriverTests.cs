@@ -163,6 +163,124 @@ public sealed class DefectPointDriverTests : IDisposable
         });
     }
 
+    [Fact]
+    public void Index_records_pool_block_and_offset_for_every_defect()
+    {
+        RunOnStaThread(() =>
+        {
+            var (driver, _, visual, _) = CreateDriver();
+            try
+            {
+                driver.OnFrame();
+                var defects = new List<DefectRecord>(600);
+                for (var i = 1; i <= 600; i++)
+                {
+                    defects.Add(new DefectRecord(i, i % 50, i % 37, 9, "Scratch", 100));
+                }
+
+                visual.DefectBatches.Enqueue(defects);
+                driver.OnFrame();
+
+                // 池内序号 → 块号/块内偏移（块按追加顺序填满，索引与几何不重复存储）
+                Assert.True(driver.TryGetEntry(512, out var firstBlockLast));
+                Assert.Equal(511, firstBlockLast.PoolIndex);
+                Assert.Equal(0, firstBlockLast.BlockIndex);
+                Assert.Equal(511, firstBlockLast.PointInBlock);
+
+                Assert.True(driver.TryGetEntry(600, out var last));
+                Assert.Equal(599, last.PoolIndex);
+                Assert.Equal(1, last.BlockIndex);
+                Assert.Equal(600 % DefectPointDriver.BlockCapacity - 1, last.PointInBlock);
+                Assert.Equal("Scratch", last.DefectClass);
+
+                Assert.False(driver.TryGetEntry(9_999, out _));
+                Assert.Equal(600, driver.IndexedCount);
+            }
+            finally
+            {
+                driver.Dispose();
+            }
+        });
+    }
+
+    [Fact]
+    public void Ray_pick_returns_nearest_defect_within_tolerance()
+    {
+        RunOnStaThread(() =>
+        {
+            var (driver, _, visual, assembly) = CreateDriver();
+            try
+            {
+                driver.OnFrame();
+                // 两处缺陷：A 在 (10,0)mm，B 在 (0,20)mm
+                visual.DefectBatches.Enqueue(
+                [
+                    new DefectRecord(1, 10, 0, 8, "Scratch", 100),
+                    new DefectRecord(2, 0, 20, 8, "Particle", 100),
+                ]);
+                driver.OnFrame();
+
+                var wafer = assembly.Find("WAFER_CURRENT")!.Geometry.Bounds;
+                var pointA = new Point3D(wafer.X + wafer.SizeX / 2 + 0.010, wafer.Y + wafer.SizeY / 2, wafer.Z + wafer.SizeZ + 0.001);
+
+                // A：自上而下正对命中（垂距 0）
+                Assert.True(driver.TryPickOnRay(
+                    new Point3D(pointA.X, pointA.Y, pointA.Z + 0.5), new Vector3D(0, 0, -1), out var hitA));
+                Assert.Equal(1, hitA.DefectId);
+                Assert.Equal(pointA.X, hitA.World.X, 6);
+
+                // B：射线偏移 3mm 仍命中（容差 6mm），且不误选 A
+                var pointB = new Point3D(wafer.X + wafer.SizeX / 2, wafer.Y + wafer.SizeY / 2 + 0.020, pointA.Z);
+                Assert.True(driver.TryPickOnRay(
+                    new Point3D(pointB.X + 0.003, pointB.Y, pointB.Z + 0.5), new Vector3D(0, 0, -1), out var hitB));
+                Assert.Equal(2, hitB.DefectId);
+
+                // 全部超容差：不命中
+                Assert.False(driver.TryPickOnRay(
+                    new Point3D(pointA.X + 0.20, pointA.Y, pointA.Z + 0.5), new Vector3D(0, 0, -1), out _));
+
+                // 射线背向（点在射线后方）：不命中
+                Assert.False(driver.TryPickOnRay(
+                    new Point3D(pointA.X, pointA.Y, pointA.Z - 0.5), new Vector3D(0, 0, -1), out _));
+
+                // 容差可收紧：3mm 偏移在 1mm 容差下不命中
+                Assert.False(driver.TryPickOnRay(
+                    new Point3D(pointB.X + 0.003, pointB.Y, pointB.Z + 0.5), new Vector3D(0, 0, -1), out _, 0.001));
+            }
+            finally
+            {
+                driver.Dispose();
+            }
+        });
+    }
+
+    [Fact]
+    public void Highlight_tracks_defect_id_and_clears_on_rebind()
+    {
+        RunOnStaThread(() =>
+        {
+            var (driver, viewport, visual, _) = CreateDriver();
+            try
+            {
+                driver.OnFrame();
+                visual.DefectBatches.Enqueue([new DefectRecord(42, 5, 5, 8, "Residue", 90)]);
+                driver.OnFrame();
+
+                driver.Highlight(42);
+                Assert.Equal(42, driver.HighlightedDefectId);
+                Assert.NotEmpty(CollectHighlightEdges(viewport));
+
+                driver.ClearHighlight();
+                Assert.Equal(0, driver.HighlightedDefectId);
+                Assert.Empty(CollectHighlightEdges(viewport));
+            }
+            finally
+            {
+                driver.Dispose();
+            }
+        });
+    }
+
     private static (DefectPointDriver Driver, TwinViewport3D Viewport, TwinVisualViewModel Visual, SceneAssembly Assembly)
         CreateDriver()
     {

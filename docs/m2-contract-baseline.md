@@ -31,6 +31,10 @@
 | `ITeachCoordinateMapper` / `ITransformInterpolator` | `Core/Kinematics/*` | 示教坐标 → 模型位姿；线性插值 |
 | `IFxOverlay` / `PartFxKind` | `Rendering/Fx/*` | 枚举只追加不改名（M3 预留） |
 | `IPartDetailDrillDown` | `AoiTwin.ViewModel`（`Panel/`） | 临时订阅 + 面板切换 |
+| `LightChannelPalette` / `RgbColor` / `LightChannelPaletteFileSource` | `AoiTwin.ViewModel` | PRD §5.5 八通道色；文件热加载坏配置保旧值 |
+| `DefectIndexEntry` / `IDefectPickSource` | `Rendering/Dynamics/*`（TA.14） | **DefectId 是 2D 列表与 3D 点云的唯一主键**：索引项含池序号/块号/块内偏移/世界坐标；上层只经 `IDefectPickSource` 访问 3D 端（风险 R-4「禁止各链路私连」） |
+| `DefectListViewModel` / `DefectRow`（TA.14） | `AoiTwin.ViewModel` | 2D 缺陷列表：整片替换 + 滑窗（`MaxRows=1000`），窗外 DefectId 定位时自动滚窗，容量恒定 |
+| `DefectLinkService` / `DefectImageViewModel`（TA.14） | `AoiTwin.App` | 2D↔3D 联动编排（高亮 ≤100ms、射线反查容差 6mm = `DefectPointDriver.DefaultPickTolerance`）与原图窗口数据 |
 
 ## 3. 对既有实现的追加（不改契约，只加成员）
 

@@ -85,6 +85,10 @@ public sealed partial class TwinSceneViewModel : ObservableObject
             new MotionPoseEngine(TeachCoordinateMapper.Load(Path.Combine(assetsRoot, "teach-calibration.json"))));
         PaletteSource = paletteSource;
 
+        // Result 直推可能来自数据线程：列表填充统一回 UI 线程（无头测试注入 null → 同步执行）
+        DefectList = new DefectListViewModel(VisualHub, action => _dispatcher.Invoke(action));
+        DefectLink = new DefectLinkService(DefectList);
+
         RefreshBookmarks();
     }
 
@@ -93,6 +97,12 @@ public sealed partial class TwinSceneViewModel : ObservableObject
 
     /// <summary>部件钻取面板（TA.12，FR-M2-08）：选中即开实时会话，取消即关。</summary>
     public DrillDownViewModel DrillDown { get; } = new();
+
+    /// <summary>2D 缺陷列表（TA.14）：订阅 Result Topic，整片替换 + 滑窗定位。</summary>
+    public DefectListViewModel DefectList { get; }
+
+    /// <summary>缺陷 2D/3D 双向联动服务（TA.14）：3D 端由视图装配后 Attach。</summary>
+    public DefectLinkService DefectLink { get; }
 
     /// <summary>诊断面板分类（TA.13：相机参数 / 光源控制 / 轴调试 / 通用诊断）。</summary>
     [ObservableProperty]
@@ -434,6 +444,19 @@ public sealed partial class TwinSceneViewModel : ObservableObject
 
     /// <summary>诊断页签索引（右侧第五个分段页签之后的固定位置）。</summary>
     public const int DiagnosticTabIndex = 5;
+
+    /// <summary>缺陷页签索引（图像映射 = 右侧第二个分段页签）。</summary>
+    public const int DefectTabIndex = 1;
+
+    /// <summary>
+    /// 2D→3D（TA.14）：按 DefectId 高亮 3D 缺陷面片。列表选中已自动触发，本入口供
+    /// 「原图窗口/诊断」等旁路主动定位；索引缺该 DefectId 时返回 false。
+    /// </summary>
+    public bool HighlightDefect(long defectId) => DefectLink.HighlightFrom2D(defectId);
+
+    /// <summary>3D→2D（TA.14）：射线反查最近缺陷 → 2D 列表滚窗定位 → 原图窗口。</summary>
+    public bool FocusDefectFrom3D(Point3D origin, Vector3D direction)
+        => DefectLink.FocusFrom3D(origin, direction);
 
     public void SelectPart(string? partId)
     {

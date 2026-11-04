@@ -185,7 +185,7 @@
                         <RadioButton x:Name="DockTab1" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
                                      Content="配方树" Margin="4,0,0,0" ToolTip="当前检测配方（M2 接入实时数据）" />
                         <RadioButton x:Name="DockTab2" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
-                                     Content="图像映射" Margin="4,0,0,0" ToolTip="晶圆缺陷映射条（M2 接入实时流）" />
+                                     Content="图像映射" Margin="4,0,0,0" ToolTip="缺陷列表：选中即定位 3D 高亮，3D 点选回写列表（TA.14）" />
                         <RadioButton x:Name="DockTab3" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
                                      Content="直方图" Margin="4,0,0,0" ToolTip="缺陷尺寸直方图与光源反射光谱（M3 接入）" />
                         <RadioButton x:Name="DockTab4" Style="{StaticResource SegmentRadio}" GroupName="RightDock"
@@ -310,19 +310,43 @@
                             </StackPanel>
                         </ScrollViewer>
 
-                        <!-- ===== 页签 2：图像映射条（M1 占位示意，M2 接入实时结果流） ===== -->
+                        <!-- ===== 页签 2：缺陷列表（TA.14 FR-M2-07 2D/3D 双向联动） ===== -->
                         <Grid Visibility="{Binding IsChecked, Converter={StaticResource BoolToVis}, ElementName=DockTab2}">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="最近一片晶圆 · 缺陷映射" Style="{StaticResource CaptionText}" />
-                            <UniformGrid x:Name="WaferMapStrip" Grid.Row="1" Rows="8" Columns="8"
-                                         Margin="0,10,0,0" />
-                            <TextBlock Grid.Row="2" Text="灰=良品 · 红=缺陷 · 黄=边缘临界（示意数据，M2 接入实时流）"
-                                       Style="{StaticResource CaptionText}" Margin="0,8,0,0"
-                                       TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding DefectList.Caption, Mode=OneWay}" Style="{StaticResource CaptionText}"
+                                       TextTrimming="CharacterEllipsis" />
+
+                            <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,8,0,0" Padding="4">
+                                <ListBox x:Name="DefectListBox"
+                                         ItemsSource="{Binding DefectList.Rows}"
+                                         SelectedItem="{Binding DefectList.Selected, Mode=TwoWay}"
+                                         Background="Transparent" BorderThickness="0"
+                                         HorizontalContentAlignment="Stretch"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Summary, Mode=OneWay}"
+                                                       FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+
+                            <StackPanel Grid.Row="2" Margin="0,8,0,0">
+                                <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap"
+                                           Text="列表选中 → 3D 线框高亮；3D 点选缺陷 → 列表定位 + 原图窗口" />
+                                <Button x:Name="OpenImageButton" Content="打开原图" Margin="0,6,0,0"
+                                        HorizontalAlignment="Left" Padding="12,4"
+                                        Style="{StaticResource ToolButton}"
+                                        Click="OnOpenImageClick"
+                                        ToolTip="按选中缺陷打开原图窗口（M2 为尺寸等比占位图）" />
+                            </StackPanel>
                         </Grid>
 
                         <!-- ===== 页签 3：直方图 / 光谱（M3 接入） ===== -->

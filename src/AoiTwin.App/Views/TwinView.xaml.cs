@@ -26,6 +26,7 @@ public partial class TwinView : UserControl
     private Rendering.Fx.AlarmPulseFx? _alarmPulse;
     private Rendering.Fx.TransportParticlesFx? _transportParticles;
     private Rendering.Camera.FollowCamera? _followCamera;
+    private Window? _defectImageWindow;
 
     public TwinView()
     {
@@ -35,7 +36,7 @@ public partial class TwinView : UserControl
         Viewport.FrameRendered += OnViewportFrame;
         Viewport.SceneClicked += OnSceneClicked;
         Viewport.SceneRightClicked += OnSceneRightClicked;
-        BuildPlaceholderWaferMap();
+        DefectListBox.SelectionChanged += OnDefectSelectionChanged;
     }
 
     /// <summary>视口实例（测试与场景挂载需要编程访问）。</summary>
@@ -69,7 +70,7 @@ public partial class TwinView : UserControl
     private void OnViewportFrame(object? sender, TimeSpan delta)
         => _viewModel?.OnCameraMoved(Viewport.Camera.Position);
 
-    /// <summary>点选（T1.8）：射线求交 → 选中部件（空白处点击 = 清除选中）。</summary>
+    /// <summary>点选（T1.8）：射线求交 → 优先命中缺陷点（TA.14），否则选中部件（空白 = 清除选中）。</summary>
     private void OnSceneClicked(object? sender, Point position)
     {
         if (_viewModel?.Package is not { } package)
@@ -78,8 +79,67 @@ public partial class TwinView : UserControl
         }
 
         var ray = Viewport.RayFrom(position);
+
+        // 缺陷优先：点云点是细小目标，命中即视为缺陷选择，不再穿透到部件
+        if (_viewModel.DefectLink.IsAttached
+            && _viewModel.FocusDefectFrom3D(ray.Origin, ray.Direction))
+        {
+            DockTab2.IsChecked = true; // 切到缺陷列表页签（列表已滚到目标行）
+            return;
+        }
+
         var hit = BuildPicker(package).Pick(ray.Origin, ray.Direction);
         _viewModel.SelectPart(hit?.PartId);
+    }
+
+    /// <summary>2D 列表选中：把选中行滚进可视区（选中本身由绑定完成，3D 高亮由服务完成）。</summary>
+    private void OnDefectSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DefectListBox.SelectedItem is { } item)
+        {
+            DefectListBox.ScrollIntoView(item);
+        }
+    }
+
+    /// <summary>打开原图窗口（TA.14 终点）：按选中缺陷取行，重复打开复用同一窗口。</summary>
+    private void OnOpenImageClick(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel is null || _viewModel.DefectList.Selected is not { } row)
+        {
+            return;
+        }
+
+        _viewModel.DefectLink.OpenImage(row.DefectId);
+    }
+
+    /// <summary>原图窗口请求：非模态展示，避免挡住 3D 交互（点选下一个缺陷即刷新内容）。</summary>
+    private void OnImageRequested(object? sender, AoiTwin.ViewModel.DefectRow row)
+    {
+        if (_viewModel is null)
+        {
+            return;
+        }
+
+        var viewModel = new DefectImageViewModel(row, _viewModel.DefectList.WaferId);
+
+        // 未入宿主窗口（无头测试 / 尚未挂到 MainWindow）时不弹窗：联动计数在服务层已完成，
+        // 这里只负责可视化，避免测试环境里产生游离顶层窗口
+        if (Window.GetWindow(this) is not { } owner)
+        {
+            return;
+        }
+
+        if (_defectImageWindow is Views.DefectImageWindow existing && existing.IsLoaded)
+        {
+            existing.DataContext = viewModel;
+            existing.Title = $"缺陷原图 · #{viewModel.DefectId}";
+            existing.Activate();
+            return;
+        }
+
+        _defectImageWindow = new Views.DefectImageWindow(viewModel) { Owner = owner };
+        _defectImageWindow.Closed += (_, _) => _defectImageWindow = null;
+        _defectImageWindow.Show();
     }
 
     /// <summary>右键诊断跳转（TA.13 FR-M2-09）：拾取部件 → VM 按类型分类 → 切到诊断页签。</summary>
@@ -149,6 +209,8 @@ public partial class TwinView : UserControl
         {
             _viewModel.BookmarkRequested -= OnBookmarkRequested;
             _viewModel.SelectionChanged -= OnSelectionChanged;
+            _viewModel.DefectLink.ImageRequested -= OnImageRequested;
+            _viewModel.DefectLink.Attach(null); // 3D 端即将释放，先解绑避免悬空引用
         }
 
         // 驱动器跟随上一份 DataContext 生命周期释放
@@ -219,6 +281,10 @@ public partial class TwinView : UserControl
                 () => _viewModel.Assembly);
             _defectPointDriver.OnFrame();
 
+            // 缺陷 2D/3D 联动（TA.14）：3D 端点云驱动注入服务，原图窗口由视图接管
+            _viewModel.DefectLink.Attach(_defectPointDriver);
+            _viewModel.DefectLink.ImageRequested += OnImageRequested;
+
             // FX 层（TA.10/TA.11）：报警脉冲常驻监听；传输粒子做晶圆流转演示动效
             _fxOverlay = new Rendering.Fx.FxOverlay(Viewport);
             _alarmPulse = new Rendering.Fx.AlarmPulseFx(
@@ -267,41 +333,6 @@ public partial class TwinView : UserControl
 
         // 折叠右侧列本身（列宽不随子元素可视性变化）
         ContentGrid.ColumnDefinitions[2].Width = immersive ? new GridLength(0) : new GridLength(290);
-    }
-
-    /// <summary>图像映射占位（T4.1）：8×8 晶圆示意数据，M2 换成实时结果流。</summary>
-    private void BuildPlaceholderWaferMap()
-    {
-        // 稳定的伪随机：同一版式每次渲染一致（截图核对与验收都要求可复现）
-        var random = new Random(20261103);
-        var dies = new[]
-        {
-            Brushes.Transparent,
-            new SolidColorBrush(Color.FromRgb(0x24, 0x40, 0x36)),
-            new SolidColorBrush(Color.FromRgb(0x2E, 0x54, 0x44)),
-            new SolidColorBrush(Color.FromRgb(0xE5, 0x48, 0x4D)),
-            new SolidColorBrush(Color.FromRgb(0xF5, 0xA6, 0x23)),
-        };
-
-        foreach (var _ in Enumerable.Range(0, 64))
-        {
-            var roll = random.NextDouble();
-            var brush = roll switch
-            {
-                < 0.06 => dies[3],   // 缺陷
-                < 0.12 => dies[4],   // 边缘临界
-                < 0.25 => dies[1],
-                _ => dies[2],        // 良品
-            };
-
-            WaferMapStrip.Children.Add(new System.Windows.Shapes.Rectangle
-            {
-                Fill = brush,
-                RadiusX = 2,
-                RadiusY = 2,
-                Margin = new Thickness(1.5),
-            });
-        }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
