@@ -46,8 +46,26 @@ public sealed partial class TwinSceneViewModel : ObservableObject
     private bool _loading;
 
     /// <summary>DI 用：按仓库/部署目录自动定位资产包。</summary>
-    public TwinSceneViewModel()
-        : this(AssetPackageLocator.LocateCatalog(), AssetPackageLocator.LocateAssetsRoot())
+    /// <summary>
+    /// DI 入口：全部依赖由容器注入（注册表见 <see cref="AppServices"/>）。
+    ///
+    /// 这里必须是「服务参数」构造，**不能**再留一个无参构造自己 new hub / 引擎：
+    /// 无参构造会让容器绕过所有注册，界面照常打开但数据一条都到不了 3D
+    /// （`DiCompositionTests` 专门锁死这一点）。
+    /// </summary>
+    public TwinSceneViewModel(
+        TwinVisualViewModel visual,
+        IRealtimeHub hub,
+        LightChannelPaletteFileSource paletteSource,
+        AoiTwin.Core.Bus.ThrottlePolicyFileSource policySource)
+        : this(
+            AssetPackageLocator.LocateCatalog(),
+            AssetPackageLocator.LocateAssetsRoot(),
+            new CameraBookmarkService(),
+            visual,
+            hub,
+            paletteSource,
+            policySource)
     {
     }
 
@@ -64,13 +82,15 @@ public sealed partial class TwinSceneViewModel : ObservableObject
     /// <param name="visual">3D 视觉 VM（DI 注入共享实例；缺省自建独立 hub + 恒等标定引擎）。</param>
     /// <param name="hub">自建 Visual 时的总线（测试发布轴数据用）。</param>
     /// <param name="paletteSource">通道配色文件源（DI 注入；缺省无文件走默认八色）。</param>
+    /// <param name="policySource">节流策略文件源（DI 注入；缺省用 `DefaultMotionPolicy` 的 200ms 按键合并）。</param>
     public TwinSceneViewModel(
         string catalogPath,
         string assetsRoot,
         CameraBookmarkService bookmarkService,
         TwinVisualViewModel? visual = null,
         IRealtimeHub? hub = null,
-        LightChannelPaletteFileSource? paletteSource = null)
+        LightChannelPaletteFileSource? paletteSource = null,
+        AoiTwin.Core.Bus.ThrottlePolicyFileSource? policySource = null)
     {
         _catalogPath = catalogPath;
         _assetsRoot = assetsRoot;
@@ -82,7 +102,10 @@ public sealed partial class TwinSceneViewModel : ObservableObject
         VisualHub = hub ?? new RealtimeHub();
         Visual = visual ?? new TwinVisualViewModel(
             VisualHub,
-            new MotionPoseEngine(TeachCoordinateMapper.Load(Path.Combine(assetsRoot, "teach-calibration.json"))));
+            new MotionPoseEngine(TeachCoordinateMapper.Load(Path.Combine(assetsRoot, "teach-calibration.json"))),
+            // 策略文件热加载（FR-M2-01）：改 assets/throttle-policy.json 后无需重启即生效；
+            // 无文件时回调返回 null → TwinVisualViewModel 回落到 DefaultMotionPolicy
+            policySource?.PolicyOf("Motion"));
         PaletteSource = paletteSource;
 
         Handling = new HandlingStateViewModel(VisualHub);

@@ -1,0 +1,6 @@
+{
+  "Motion": { "MinIntervalMs": 200, "KeepLatest": true },
+  "Status": null,
+  "Optics": null,
+  "Result": null
+}

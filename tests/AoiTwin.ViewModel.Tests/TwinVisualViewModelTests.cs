@@ -1,3 +1,4 @@
+using System.Threading;
 using AoiTwin.Core.Bus;
 using AoiTwin.ViewModel;
 using Xunit;
@@ -12,6 +13,39 @@ public class TwinVisualViewModelTests
 {
     private static AxisSnapshot Axis(string partId = "ROBOT", string axis = "X", double pos = 1.0) =>
         new(partId, axis, pos, 0, DateTimeOffset.UtcNow);
+
+    [Fact]
+    public void External_motion_policy_gets_axis_merge_key()
+    {
+        // 配置文件只能写「窗口 + KeepLatest」，写不出 MergeKey（委托）。
+        // 若不补默认合并键，同一窗口内 X/Y/Z 会互相顶掉——逐轴消息只剩最后一条，等于丢轴。
+        var hub = new RealtimeHub();
+        using var vm = new TwinVisualViewModel(
+            hub,
+            motionSource: null,
+            motionPolicyProvider: () => new ThrottlePolicy(TimeSpan.FromMilliseconds(50)));
+
+        hub.Publish(TwinTopic.Motion, Axis("STAGE", "X", 10));
+        hub.Publish(TwinTopic.Motion, Axis("STAGE", "Y", 20));
+        hub.Publish(TwinTopic.Motion, Axis("STAGE", "Z", 30));
+
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while (DateTime.UtcNow < deadline)
+        {
+            var pose = vm.GetMotionPart("STAGE").ReadLatest();
+            if (pose.Matrix[3] != 0 && pose.Matrix[7] != 0 && pose.Matrix[11] != 0)
+            {
+                Assert.Equal(10, pose.Matrix[3], 6);
+                Assert.Equal(20, pose.Matrix[7], 6);
+                Assert.Equal(30, pose.Matrix[11], 6);
+                return;
+            }
+
+            Thread.Sleep(20);
+        }
+
+        Assert.Fail("三个轴没有全部送达：外部策略缺少按键合并（会互相顶掉）");
+    }
 
     [Fact]
     public async Task Pose_buffer_is_tear_free_under_concurrent_write_read()

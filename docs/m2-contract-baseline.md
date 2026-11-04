@@ -50,6 +50,10 @@
 
 **兼容性**：`PartVisual.Motion` 保留（M1 的 `BuildPicker` 与测试继续可用），新成员为 `null` 时行为与 M1 完全一致。
 
+| `AppServices.AddAoiTwinApp`（TA.20） | **唯一的服务注册表**：`App` 与 `DiCompositionTests` 共用。场景 VM 的 DI 构造必须接收服务参数（`TwinVisualViewModel` / `IRealtimeHub` / 配色源 / 策略源），**不得保留自建 hub 的无参构造** |
+| 配色文件三表 schema（TA.20） | `lightChannelColors`（必需）/ `defectClassColors` / `stateColors`（含 M3 预留 `Warning`/`Critical`）；三表整体换入，任一解析失败保旧值 |
+| `TwinVisualViewModel.NormalizeMotionPolicy`（TA.20） | 文件策略只能表达窗口与 `KeepLatest`，表达不了 `MergeKey`（委托）；外部策略一律补默认按键合并，否则同窗口内逐轴消息互相顶掉（丢轴） |
+
 **热路径约束（NFR-13，回归门禁）**：`tests/AoiTwin.Rendering.Tests/PerfProbeTests.cs` 断言
 「位姿合成 + VM 刷新 120 帧分配 = 0 B」「纹理/点云空帧 120 帧分配 = 0 B」「整帧 ≤ 96 B」。
 后续任何在 `GetPose` / `RefreshMotion` / `OnFrame` 里新增 `ToList()` / `Values` / 字符串操作 / LINQ 的改动都会让 CI 变红——

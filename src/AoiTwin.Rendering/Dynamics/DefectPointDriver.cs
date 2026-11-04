@@ -34,14 +34,12 @@ public sealed class DefectPointDriver : IDefectPickSource, IDisposable
     /// <summary>未配置缺陷等级的降级色。</summary>
     private static readonly Color FallbackColor = Color.FromRgb(0xB0, 0xB0, 0xB0);
 
-    /// <summary>PRD §5.5 默认缺陷配色。</summary>
+    /// <summary>PRD §5.5 默认缺陷配色（单一事实来源在 ViewModel 层的配色表，避免两处维护）。</summary>
     private static readonly IReadOnlyDictionary<string, Color> DefaultClassColors =
-        new Dictionary<string, Color>(StringComparer.Ordinal)
-        {
-            ["Scratch"] = Color.FromRgb(0xFF, 0x6B, 0x81),
-            ["Particle"] = Color.FromRgb(0xFF, 0x9F, 0x43),
-            ["Residue"] = Color.FromRgb(0xC5, 0x6C, 0xF0),
-        };
+        LightChannelPalette.DefaultDefectClassColors.ToDictionary(
+            pair => pair.Key,
+            pair => Color.FromRgb(pair.Value.R, pair.Value.G, pair.Value.B),
+            StringComparer.Ordinal);
 
     private readonly TwinViewport3D _viewport;
     private readonly TwinVisualViewModel _visualViewModel;
@@ -54,11 +52,23 @@ public sealed class DefectPointDriver : IDefectPickSource, IDisposable
     private SceneAssembly? _boundAssembly;
     private bool _disposed;
 
-    public DefectPointDriver(TwinViewport3D viewport, TwinVisualViewModel visualViewModel, Func<SceneAssembly?> assemblyProvider)
+    private readonly Func<IReadOnlyDictionary<string, RgbColor>>? _classColorsProvider;
+
+    /// <param name="classColorsProvider">
+    /// 缺陷等级配色来源（NFR-18 热加载）：每片结果按当前配色重建池，改配置免重编译。
+    /// 传 null 或未配置的等级回落 PRD §5.5 默认表 / 中性灰。
+    /// </param>
+    public DefectPointDriver(
+        TwinViewport3D viewport,
+        TwinVisualViewModel visualViewModel,
+        Func<SceneAssembly?> assemblyProvider,
+        Func<IReadOnlyDictionary<string, RgbColor>>? classColorsProvider = null)
     {
         ArgumentNullException.ThrowIfNull(viewport);
         ArgumentNullException.ThrowIfNull(visualViewModel);
         ArgumentNullException.ThrowIfNull(assemblyProvider);
+
+        _classColorsProvider = classColorsProvider;
 
         _viewport = viewport;
         _visualViewModel = visualViewModel;
@@ -253,8 +263,17 @@ public sealed class DefectPointDriver : IDefectPickSource, IDisposable
         }
     }
 
-    private static Color ResolveColor(string defectClass) =>
-        DefaultClassColors.TryGetValue(defectClass, out var color) ? color : FallbackColor;
+    /// <summary>缺陷等级 → 颜色：外部配置优先，缺键回落 PRD 默认表，再回落中性灰。</summary>
+    private Color ResolveColor(string defectClass)
+    {
+        var configured = _classColorsProvider?.Invoke();
+        if (configured is not null && configured.TryGetValue(defectClass, out var rgb))
+        {
+            return Color.FromRgb(rgb.R, rgb.G, rgb.B);
+        }
+
+        return DefaultClassColors.TryGetValue(defectClass, out var color) ? color : FallbackColor;
+    }
 
     /// <summary>缺陷坐标 → 世界坐标（mm → m，晶圆顶面上方 1mm）。</summary>
     private static Point3D ToWorld(DefectRecord defect, Rect3D wafer) => new(

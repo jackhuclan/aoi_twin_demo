@@ -1,9 +1,5 @@
 using System.Windows;
-using System.IO;
 using AoiTwin.App.ViewModels;
-using AoiTwin.Core.Bus;
-using AoiTwin.Core.Kinematics;
-using AoiTwin.ViewModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -22,21 +18,8 @@ public partial class App : Application
         base.OnStartup(e);
 
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddSingleton<IRealtimeHub, RealtimeHub>();
-        // TA.4 运动同步：位姿引擎（示教标定缺文件时恒等降级）→ 视觉 VM → 场景 VM 共享同一链路
-        builder.Services.AddSingleton(_ => new MotionPoseEngine(
-            TeachCoordinateMapper.Load(Path.Combine(
-                AssetPackageLocator.LocateAssetsRoot(), "teach-calibration.json"))));
-        builder.Services.AddSingleton<TwinVisualViewModel>();
-        // TA.5 光学状态：通道配色（PRD §5.5 schema，热加载；文件缺失回落默认八色）
-        builder.Services.AddSingleton(_ => new LightChannelPaletteFileSource(
-            Path.Combine(AssetPackageLocator.LocateAssetsRoot(), "light-channel-colors.json")));
-        builder.Services.AddSingleton<TwinSceneViewModel>();
-        builder.Services.AddSingleton<CollectionMonitorViewModel>();
-        builder.Services.AddSingleton<ReplayViewModel>();
-        builder.Services.AddSingleton<RecordingManagerViewModel>();
-        builder.Services.AddSingleton<MainViewModel>();
-        builder.Services.AddSingleton<MainWindow>();
+        // 注册表见 AppServices（与 DiCompositionTests 共用同一份，避免「注册与实际构造不一致」）
+        builder.Services.AddAoiTwinApp();
 
         _host = builder.Build();
         _host.Start();

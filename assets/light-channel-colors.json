@@ -8,5 +8,17 @@
     "6": "#F5F5C4",
     "7": "#C4D6FF",
     "8": "#D6FFC4"
+  },
+  "defectClassColors": {
+    "Scratch": "#FF6B81",
+    "Particle": "#FF9F43",
+    "Residue": "#C56CF0"
+  },
+  "stateColors": {
+    "Run": "#2ED573",
+    "Idle": "#8395A7",
+    "Alarm": "#FF4757",
+    "Warning": "#F5A623",
+    "Critical": "#C0392B"
   }
 }

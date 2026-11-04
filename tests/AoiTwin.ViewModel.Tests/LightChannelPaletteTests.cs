@@ -56,6 +56,57 @@ public sealed class LightChannelPaletteTests : IDisposable
     }
 
     [Fact]
+    public void Loads_defect_and_state_colors_with_m3_reserved_keys()
+    {
+        File.WriteAllText(_path, """
+            {
+              "lightChannelColors": { "1": "#112233" },
+              "defectClassColors": { "Scratch": "#AABBCC" },
+              "stateColors": { "Run": "#00FF00", "Warning": "#FFAA00", "Critical": "#AA0000" }
+            }
+            """, Encoding.UTF8);
+
+        using var source = new LightChannelPaletteFileSource(_path);
+        var palette = source.Palette;
+
+        Assert.Null(source.LastError);
+        Assert.Equal(new RgbColor(0xAA, 0xBB, 0xCC), palette.DefectClassColors["Scratch"]);
+        // 未配置的缺陷等级不凭空补默认值：调用方按需回落（渲染层再兜中性灰）
+        Assert.False(palette.TryGetDefectColor("Particle", out _));
+        Assert.Equal(new RgbColor(0xFF, 0xAA, 0x00), palette.StateColors["Warning"]);
+        Assert.Equal(new RgbColor(0xAA, 0x00, 0x00), palette.StateColors["Critical"]); // M3 报警分级预留键
+    }
+
+    [Fact]
+    public void Omitted_optional_tables_fall_back_to_prd_defaults()
+    {
+        File.WriteAllText(_path, """
+            { "lightChannelColors": { "1": "#112233" } }
+            """, Encoding.UTF8);
+
+        using var source = new LightChannelPaletteFileSource(_path);
+
+        // 只写了通道色也要能跑：缺陷色与状态色取 PRD §5.5 默认
+        Assert.Equal(
+            new RgbColor(0xFF, 0x6B, 0x81),
+            source.Palette.DefectClassColors["Scratch"]);
+        Assert.Equal(
+            new RgbColor(0xFF, 0x47, 0x57),
+            source.Palette.StateColors["Alarm"]);
+    }
+
+    [Fact]
+    public void Default_state_colors_cover_m3_alarm_grades()
+    {
+        // 键必须存在：M3 加报警分级时不应改动 schema（契约冻结项）
+        Assert.True(LightChannelPalette.DefaultStateColors.ContainsKey("Warning"));
+        Assert.True(LightChannelPalette.DefaultStateColors.ContainsKey("Critical"));
+        Assert.True(LightChannelPalette.DefaultStateColors.ContainsKey("Run"));
+        Assert.True(LightChannelPalette.DefaultStateColors.ContainsKey("Idle"));
+        Assert.True(LightChannelPalette.DefaultStateColors.ContainsKey("Alarm"));
+    }
+
+    [Fact]
     public void Hot_reload_picks_up_new_values()
     {
         File.WriteAllText(_path, """{ "lightChannelColors": { "1": "#112233" } }""", Encoding.UTF8);

@@ -25,16 +25,62 @@ public sealed class LightChannelPalette
         [8] = new(0xD6, 0xFF, 0xC4),
     }.ToImmutableDictionary();
 
-    public LightChannelPalette(IReadOnlyDictionary<int, RgbColor> channels)
+    /// <summary>PRD §5.5 的默认缺陷等级配色（未配置时的兜底）。</summary>
+    public static readonly ImmutableDictionary<string, RgbColor> DefaultDefectClassColors =
+        new Dictionary<string, RgbColor>(StringComparer.Ordinal)
+        {
+            ["Scratch"] = new(0xFF, 0x6B, 0x81),
+            ["Particle"] = new(0xFF, 0x9F, 0x43),
+            ["Residue"] = new(0xC5, 0x6C, 0xF0),
+        }.ToImmutableDictionary(StringComparer.Ordinal);
+
+    /// <summary>
+    /// PRD §5.5 的默认状态色。M2 只用 Run/Idle/Alarm；<c>Warning</c>/<c>Critical</c>
+    /// 为 M3 报警分级**预留占位**（键已存在，M3 直接取值即可，不需要改 schema）。
+    /// </summary>
+    public static readonly ImmutableDictionary<string, RgbColor> DefaultStateColors =
+        new Dictionary<string, RgbColor>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Run"] = new(0x2E, 0xD5, 0x73),
+            ["Idle"] = new(0x83, 0x95, 0xA7),
+            ["Alarm"] = new(0xFF, 0x47, 0x57),
+            ["Warning"] = new(0xF5, 0xA6, 0x23),
+            ["Critical"] = new(0xC0, 0x39, 0x2B),
+        }.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase);
+
+    public LightChannelPalette(
+        IReadOnlyDictionary<int, RgbColor> channels,
+        IReadOnlyDictionary<string, RgbColor>? defectClassColors = null,
+        IReadOnlyDictionary<string, RgbColor>? stateColors = null)
     {
         ArgumentNullException.ThrowIfNull(channels);
         Channels = channels.ToImmutableDictionary();
+        DefectClassColors = defectClassColors is null
+            ? DefaultDefectClassColors
+            : defectClassColors.ToImmutableDictionary(StringComparer.Ordinal);
+        StateColors = stateColors is null
+            ? DefaultStateColors
+            : stateColors.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>通道号 → 颜色。</summary>
     public ImmutableDictionary<int, RgbColor> Channels { get; }
 
+    /// <summary>缺陷等级 → 颜色（PRD §5.5 <c>defectClassColors</c>，NFR-18 免编译可配）。</summary>
+    public ImmutableDictionary<string, RgbColor> DefectClassColors { get; }
+
+    /// <summary>部件状态 → 颜色（PRD §5.5 <c>stateColors</c>；含 M3 预留的 Warning/Critical）。</summary>
+    public ImmutableDictionary<string, RgbColor> StateColors { get; }
+
     public bool TryGetColor(int channel, out RgbColor color) => Channels.TryGetValue(channel, out color);
+
+    /// <summary>取缺陷等级配色；未配置的等级返回 false（渲染层回落中性灰）。</summary>
+    public bool TryGetDefectColor(string defectClass, out RgbColor color) =>
+        DefectClassColors.TryGetValue(defectClass, out color);
+
+    /// <summary>取状态色；未配置的状态返回 false。</summary>
+    public bool TryGetStateColor(string state, out RgbColor color) =>
+        StateColors.TryGetValue(state, out color);
 
     /// <summary>解析 "#RRGGBB"。</summary>
     public static RgbColor ParseHex(string hex)

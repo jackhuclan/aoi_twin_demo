@@ -284,7 +284,10 @@ public partial class TwinView : UserControl
             _defectPointDriver = new Rendering.Dynamics.DefectPointDriver(
                 Viewport,
                 _viewModel.Visual,
-                () => _viewModel.Assembly);
+                () => _viewModel.Assembly,
+                // 缺陷等级配色（NFR-18）：随配色文件热加载，改配置免重编译
+                () => _viewModel.PaletteSource?.Palette.DefectClassColors
+                      ?? AoiTwin.ViewModel.LightChannelPalette.DefaultDefectClassColors);
             _defectPointDriver.OnFrame();
 
             // 缺陷 2D/3D 联动（TA.14）：3D 端点云驱动注入服务，原图窗口由视图接管

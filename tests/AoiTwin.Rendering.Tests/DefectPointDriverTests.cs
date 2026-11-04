@@ -71,6 +71,38 @@ public sealed class DefectPointDriverTests : IDisposable
     }
 
     [Fact]
+    public void External_palette_overrides_default_class_colors()
+    {
+        RunOnStaThread(() =>
+        {
+            // NFR-18：缺陷等级配色来自配置文件（热加载），不是编译期常量
+            var configured = new Dictionary<string, RgbColor>(StringComparer.Ordinal)
+            {
+                ["Scratch"] = new(0x00, 0xFF, 0x00),
+            };
+
+            var viewport = new TwinViewport3D();
+            var hub = new RealtimeHub();
+            var visual = new TwinVisualViewModel(hub, motionPolicyProvider: () => ThrottlePolicy.PassThrough);
+            var assembly = BuildAssembly();
+            using var driver = new DefectPointDriver(
+                viewport, visual, () => assembly, () => configured);
+
+            driver.OnFrame();
+            visual.DefectBatches.Enqueue(
+            [
+                new DefectRecord(1, -10, -10, 8, "Scratch", 100),
+                new DefectRecord(2, 10, 10, 8, "Particle", 100), // 外部表未配置：回落 PRD 默认
+            ]);
+            driver.OnFrame();
+
+            var blocks = CollectAllBlocks(viewport);
+            Assert.Contains(blocks, b => b.Color == Color.FromRgb(0x00, 0xFF, 0x00)); // 外部配置生效
+            Assert.Contains(blocks, b => b.Color == Color.FromRgb(0xFF, 0x9F, 0x43)); // PRD 默认兜底
+        });
+    }
+
+    [Fact]
     public void Classes_get_configured_colors_and_unknown_falls_back()
     {
         RunOnStaThread(() =>

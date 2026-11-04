@@ -50,7 +50,7 @@ public sealed class TwinVisualViewModel : IDisposable
         _subscriptions.Add(hub.Subscribe<AxisSnapshot>(
             TwinTopic.Motion,
             Guarded<AxisSnapshot>(TwinTopic.Motion, OnMotion),
-            motionPolicyProvider ?? DefaultMotionPolicyProvider));
+            motionPolicyProvider is null ? DefaultMotionPolicyProvider : () => NormalizeMotionPolicy(motionPolicyProvider())));
 
         _subscriptions.Add(hub.Subscribe<StatusEvent>(TwinTopic.Status, Guarded<StatusEvent>(TwinTopic.Status, OnStatus)));
         _subscriptions.Add(hub.Subscribe<OpticsEvent>(TwinTopic.Optics, Guarded<OpticsEvent>(TwinTopic.Optics, OnOptics)));
@@ -58,6 +58,23 @@ public sealed class TwinVisualViewModel : IDisposable
     }
 
     private static readonly Func<ThrottlePolicy?> DefaultMotionPolicyProvider = () => DefaultMotionPolicy;
+
+    /// <summary>
+    /// 配置文件只能表达「窗口 + 是否保留最新」，表达不了 <see cref="ThrottlePolicy.MergeKey"/>（那是委托）。
+    /// 轴消息是**逐轴**的：不按键合并就等于全局只留最新，同一窗口里 X/Y/Z 会互相顶掉、丢轴。
+    /// 因此外部策略一律补上默认合并键；显式直推（MinInterval = 0）保持原样。
+    /// </summary>
+    private static ThrottlePolicy NormalizeMotionPolicy(ThrottlePolicy? policy)
+    {
+        if (policy is null)
+        {
+            return DefaultMotionPolicy;
+        }
+
+        return policy.MergeKey is null && policy.MinInterval > TimeSpan.Zero
+            ? policy with { MergeKey = DefaultMotionPolicy.MergeKey }
+            : policy;
+    }
 
     /// <summary>默认轴策略：200ms 窗口、按键（PartId|AxisName）保留各自最新。</summary>
     public static ThrottlePolicy DefaultMotionPolicy { get; } = new(DefaultMotionWindow)
@@ -128,7 +145,15 @@ public sealed class TwinVisualViewModel : IDisposable
             return;
         }
 
-        foreach (var part in Volatile.Read(ref _motionArray))
+        var parts = Volatile.Read(ref _motionArray);
+        if (parts.Length == 0)
+        {
+            // 装配尚未调用 GetMotionPart 时的兜底（冷路径）：帧循环不能永远刷不到部件
+            EnsureMotionArray();
+            parts = Volatile.Read(ref _motionArray);
+        }
+
+        foreach (var part in parts)
         {
             var pose = _motionSource.GetPose(part.PartId, now);
             if (pose is not null)
