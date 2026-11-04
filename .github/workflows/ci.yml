@@ -22,4 +22,17 @@ jobs:
         run: dotnet build AoiTwin.slnx -c Release --nologo
 
       - name: Test
-        run: dotnet test AoiTwin.slnx -c Release --no-build --nologo
+        # 失败时把失败用例名与首个断言消息打成注解（Annotations），
+        # 避免只能整包下载日志才能定位（运行日志需鉴权，注解是公开可读的）
+        shell: pwsh
+        run: |
+          dotnet test AoiTwin.slnx -c Release --no-build --nologo 2>&1 | Tee-Object -FilePath test-output.log
+          if ($LASTEXITCODE -ne 0) {
+            Select-String -Path test-output.log -Pattern '\[FAIL\]' | ForEach-Object {
+              Write-Output "::error::$($_.Line.Trim())"
+            }
+            Select-String -Path test-output.log -Pattern '^\s+(Assert|Expected|Actual|错误消息)' | Select-Object -First 12 | ForEach-Object {
+              Write-Output "::error::$($_.Line.Trim())"
+            }
+            exit 1
+          }

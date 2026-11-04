@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    TA.17 回放回归套件独立工程：与 AoiTwin.App.Tests 分进程运行。
+    理由：本套件在自己的 STA 线程上创建 Viewport3D 并推帧，而 App.Tests 会创建 WPF Application；
+    两者同进程并行/串行都会因 Application.Current 与 MediaContext 的线程归属互相拖死
+    （本地实测：合并时冒烟用例 60s 超时、进程在收尾中止）。分进程后各自干净。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>AoiTwin.Regression.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AoiTwin.App\AoiTwin.App.csproj" />
+  </ItemGroup>
+
+</Project>

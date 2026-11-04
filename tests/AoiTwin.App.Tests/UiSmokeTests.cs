@@ -236,9 +236,15 @@ public class UiSmokeTests
                     new Dictionary<string, string> { ["CassetteCount"] = "18" }, DateTimeOffset.UtcNow));
                 Assert.Equal("Track 有片 · Cassette 18/25", twin.Handling.Caption);
 
-                Thread.Sleep(1050); // 1s 节流窗口
-                twinView.HandlingDriver.OnFrame();
-                Assert.True(twinView.HandlingDriver.WaferVisible);
+                // 1s 节流：轮询等状态落地（不写死 sleep，避免 CI 计时精度差异造成假失败）
+                var handlingWatch = System.Diagnostics.Stopwatch.StartNew();
+                while (!twinView.HandlingDriver.WaferVisible && handlingWatch.ElapsedMilliseconds < 3000)
+                {
+                    twinView.HandlingDriver.OnFrame();
+                    Thread.Sleep(50);
+                }
+
+                Assert.True(twinView.HandlingDriver.WaferVisible, "装载状态未在 3s 内落地");
                 Assert.Equal(18, twinView.HandlingDriver.LitSlotCount);
 
                 // 点选与台账信息区（T1.8）：列表 16 项、选中详情、清除选中
