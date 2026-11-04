@@ -60,9 +60,171 @@ public sealed class RealtimeHub : IRealtimeHub
         return new Unsubscriber(this, subscription);
     }
 
-    private sealed class Unsubscriber(RealtimeHub hub, Subscription subscription) : IDisposable
+    public IDisposable Subscribe<T>(TwinTopic topic, Action<T> handler, ThrottlePolicy? policy)
+        where T : ITwinMessage
     {
+        if (policy is null)
+        {
+            return Subscribe(topic, handler);
+        }
+
+        return Subscribe(topic, handler, (Func<ThrottlePolicy?>)(() => policy));
+    }
+
+    public IDisposable Subscribe<T>(TwinTopic topic, Action<T> handler, Func<ThrottlePolicy?> policyProvider)
+        where T : ITwinMessage
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        ArgumentNullException.ThrowIfNull(policyProvider);
+
+        // 静态直推策略（null / Zero）退化为 M1 原生订阅，零额外开销
+        var initial = policyProvider();
+        if (initial is null || initial.MinInterval <= TimeSpan.Zero)
+        {
+            return Subscribe(topic, handler);
+        }
+
+        var sink = new ThrottledSink<T>(handler, policyProvider);
+        var subscription = new Subscription(topic, typeof(T), m => sink.OnNext((T)m));
+        lock (_gate)
+        {
+            _subscriptions = _subscriptions.Add(subscription);
+        }
+
+        return new Unsubscriber(this, subscription, sink);
+    }
+
+    /// <summary>
+    /// 合并窗口节流槽（TA.1）：窗口内 KeepLatest=true 只留最新一条、false 逐条排队；
+    /// 窗口到期由一次性 Timer 在线程池线程送达。策略每次到达时重新查询（支持热加载）。
+    /// </summary>
+    private sealed class ThrottledSink<T> : IDisposable
+        where T : ITwinMessage
+    {
+        private readonly object _gate = new();
+        private readonly Action<T> _handler;
+        private readonly Func<ThrottlePolicy?> _policyProvider;
+        private readonly Queue<T> _backlog = new();
+        private T? _latest;
+        private Timer? _timer;
+        private bool _disposed;
+
+        public ThrottledSink(Action<T> handler, Func<ThrottlePolicy?> policyProvider)
+        {
+            _handler = handler;
+            _policyProvider = policyProvider;
+        }
+
+        public void OnNext(T message)
+        {
+            var policy = _policyProvider();
+            if (policy is null || policy.MinInterval <= TimeSpan.Zero)
+            {
+                _handler(message);
+                return;
+            }
+
+            lock (_gate)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                if (policy.KeepLatest)
+                {
+                    _latest = message;
+                }
+                else
+                {
+                    _backlog.Enqueue(message);
+                }
+
+                _timer ??= new Timer(Flush, null, policy.MinInterval, Timeout.InfiniteTimeSpan);
+            }
+        }
+
+        private void Flush(object? state)
+        {
+            T? deliver;
+            bool reschedule;
+            TimeSpan interval = Timeout.InfiniteTimeSpan;
+
+            lock (_gate)
+            {
+                var fired = _timer;
+                _timer = null;
+                fired?.Dispose();
+
+                deliver = _latest;
+                _latest = default;
+                if (deliver is null && _backlog.Count > 0)
+                {
+                    deliver = _backlog.Dequeue();
+                }
+
+                // KeepLatest=false 时若队列仍有积压，按剩余策略间隔继续排空
+                reschedule = _backlog.Count > 0;
+                if (reschedule)
+                {
+                    interval = _policyProvider()?.MinInterval ?? Timeout.InfiniteTimeSpan;
+                    if (interval <= TimeSpan.Zero)
+                    {
+                        interval = TimeSpan.FromMilliseconds(1);
+                    }
+                }
+            }
+
+            if (deliver is not null)
+            {
+                try
+                {
+                    _handler(deliver);
+                }
+                catch
+                {
+                    // 与直推路径一致：订阅方异常被隔离（NFR-05）。
+                }
+            }
+
+            if (reschedule)
+            {
+                lock (_gate)
+                {
+                    if (!_disposed && _timer is null)
+                    {
+                        _timer = new Timer(Flush, null, interval, Timeout.InfiniteTimeSpan);
+                    }
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_gate)
+            {
+                _disposed = true;
+                _timer?.Dispose();
+                _timer = null;
+                _latest = default;
+                _backlog.Clear();
+            }
+        }
+    }
+
+    private sealed class Unsubscriber : IDisposable
+    {
+        private readonly RealtimeHub _hub;
+        private readonly Subscription _subscription;
+        private readonly IDisposable? _sink;
         private int _disposed;
+
+        public Unsubscriber(RealtimeHub hub, Subscription subscription, IDisposable? sink = null)
+        {
+            _hub = hub;
+            _subscription = subscription;
+            _sink = sink;
+        }
 
         public void Dispose()
         {
@@ -71,9 +233,10 @@ public sealed class RealtimeHub : IRealtimeHub
                 return;
             }
 
-            lock (hub._gate)
+            _sink?.Dispose();
+            lock (_hub._gate)
             {
-                hub._subscriptions = hub._subscriptions.Remove(subscription);
+                _hub._subscriptions = _hub._subscriptions.Remove(_subscription);
             }
         }
     }
