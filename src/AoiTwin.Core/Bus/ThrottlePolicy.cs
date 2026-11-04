@@ -14,4 +14,11 @@ public sealed record ThrottlePolicy(TimeSpan MinInterval, bool KeepLatest = true
 {
     /// <summary>事件直推策略（等价于不传 policy）。</summary>
     public static ThrottlePolicy PassThrough { get; } = new(TimeSpan.Zero);
+
+    /// <summary>
+    /// 可选合并键（M2 增补，只增不改）：非 null 时 KeepLatest 合并按键独立保留最新值，
+    /// 窗口到期逐键各送一条。轴场景键取「PartId+AxisName」——AxisSnapshot 是逐轴消息，
+    /// 全局只留最新会丢掉同部件其他轴的更新，按键合并才能保证 200ms 内每轴至少送达一次。
+    /// </summary>
+    public Func<ITwinMessage, string?>? MergeKey { get; init; }
 }

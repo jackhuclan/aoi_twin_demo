@@ -105,6 +105,7 @@ public sealed class RealtimeHub : IRealtimeHub
         private readonly Action<T> _handler;
         private readonly Func<ThrottlePolicy?> _policyProvider;
         private readonly Queue<T> _backlog = new();
+        private readonly Dictionary<string, T> _latestByKey = new(StringComparer.Ordinal);
         private T? _latest;
         private Timer? _timer;
         private bool _disposed;
@@ -131,7 +132,13 @@ public sealed class RealtimeHub : IRealtimeHub
                     return;
                 }
 
-                if (policy.KeepLatest)
+                if (policy.MergeKey is not null)
+                {
+                    // 按键合并：每键独立保留最新，窗口到期逐键各送一条
+                    var key = policy.MergeKey(message) ?? string.Empty;
+                    _latestByKey[key] = message;
+                }
+                else if (policy.KeepLatest)
                 {
                     _latest = message;
                 }
@@ -146,6 +153,7 @@ public sealed class RealtimeHub : IRealtimeHub
 
         private void Flush(object? state)
         {
+            List<T>? batch = null;
             T? deliver;
             bool reschedule;
             TimeSpan interval = Timeout.InfiniteTimeSpan;
@@ -156,11 +164,20 @@ public sealed class RealtimeHub : IRealtimeHub
                 _timer = null;
                 fired?.Dispose();
 
-                deliver = _latest;
-                _latest = default;
-                if (deliver is null && _backlog.Count > 0)
+                if (_latestByKey.Count > 0)
                 {
-                    deliver = _backlog.Dequeue();
+                    batch = [.. _latestByKey.Values];
+                    _latestByKey.Clear();
+                    deliver = default;
+                }
+                else
+                {
+                    deliver = _latest;
+                    _latest = default;
+                    if (deliver is null && _backlog.Count > 0)
+                    {
+                        deliver = _backlog.Dequeue();
+                    }
                 }
 
                 // KeepLatest=false 时若队列仍有积压，按剩余策略间隔继续排空
@@ -175,7 +192,21 @@ public sealed class RealtimeHub : IRealtimeHub
                 }
             }
 
-            if (deliver is not null)
+            if (batch is not null)
+            {
+                foreach (var message in batch)
+                {
+                    try
+                    {
+                        _handler(message);
+                    }
+                    catch
+                    {
+                        // 与直推路径一致：订阅方异常被隔离（NFR-05）。
+                    }
+                }
+            }
+            else if (deliver is not null)
             {
                 try
                 {

@@ -173,8 +173,51 @@ public class ThrottlePolicyTests : IDisposable
         Assert.Equal(200, source.Get("Motion")!.MinInterval.TotalMilliseconds); // 旧策略继续生效
     }
 
+    [Fact]
+    public async Task Merge_key_keeps_latest_per_axis_without_cross_axis_loss()
+    {
+        var delivered = new List<(string Axis, double Position)>();
+        using var done = new ManualResetEventSlim(false);
+        using var s = _hub.Subscribe<AxisSnapshot>(
+            TwinTopic.Motion,
+            m =>
+            {
+                lock (delivered)
+                {
+                    delivered.Add((m.AxisName, m.Position));
+                    if (delivered.Count >= 2)
+                    {
+                        done.Set();
+                    }
+                }
+            },
+            new ThrottlePolicy(TimeSpan.FromMilliseconds(120))
+            {
+                // 键 = 轴名：R/Z 两轴各自保留最新，窗口到期各送一条
+                MergeKey = m => ((AxisSnapshot)m).AxisName,
+            });
+
+        // 交替发布两轴：R 1→2→3，Z 10→20→30
+        _hub.Publish(TwinTopic.Motion, Snap("R", 1));
+        _hub.Publish(TwinTopic.Motion, Snap("Z", 10));
+        _hub.Publish(TwinTopic.Motion, Snap("R", 2));
+        _hub.Publish(TwinTopic.Motion, Snap("Z", 20));
+        _hub.Publish(TwinTopic.Motion, Snap("R", 3));
+        _hub.Publish(TwinTopic.Motion, Snap("Z", 30));
+
+        Assert.True(done.Wait(TimeSpan.FromSeconds(3)), "每轴应各送达一次");
+        Assert.Equal(
+            new[] { ("R", 3.0), ("Z", 30.0) }.OrderBy(x => x.Item1),
+            delivered.Select(x => (x.Axis, x.Position)).OrderBy(x => x.Item1));
+        await Task.Delay(200);
+        Assert.Equal(2, delivered.Count); // 不会重复送达
+    }
+
     private static AxisSnapshot Snap(double position) =>
         new("ROBOT", "R", position, 0, DateTimeOffset.UtcNow);
+
+    private static AxisSnapshot Snap(string axis, double position) =>
+        new("ROBOT", axis, position, 0, DateTimeOffset.UtcNow);
 
     private void WriteConfig(string json) =>
         File.WriteAllText(_configPath, json, Encoding.UTF8);

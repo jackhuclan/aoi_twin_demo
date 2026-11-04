@@ -6,10 +6,12 @@
   <Project Path="src/AoiTwin.Rendering/AoiTwin.Rendering.csproj" />
   <Project Path="src/AoiTwin.App/AoiTwin.App.csproj" />
   <Project Path="src/AoiTwin.AssetTools/AoiTwin.AssetTools.csproj" />
+  <Project Path="src/AoiTwin.ViewModel/AoiTwin.ViewModel.csproj" />
   <Project Path="tests/AoiTwin.Core.Tests/AoiTwin.Core.Tests.csproj" />
   <Project Path="tests/AoiTwin.Adapters.Tests/AoiTwin.Adapters.Tests.csproj" />
   <Project Path="tests/AoiTwin.AssetTools.Tests/AoiTwin.AssetTools.Tests.csproj" />
   <Project Path="tests/AoiTwin.App.Tests/AoiTwin.App.Tests.csproj" />
   <Project Path="tests/AoiTwin.Rendering.Tests/AoiTwin.Rendering.Tests.csproj" />
+  <Project Path="tests/AoiTwin.ViewModel.Tests/AoiTwin.ViewModel.Tests.csproj" />
   <Project Path="tools/AoiTwin.Soak/AoiTwin.Soak.csproj" />
 </Solution>
