@@ -22,6 +22,9 @@ public partial class TwinView : UserControl
     private Rendering.Dynamics.ScanFrustumDriver? _scanFrustumDriver;
     private Rendering.Dynamics.WaferMapDriver? _waferMapDriver;
     private Rendering.Dynamics.DefectPointDriver? _defectPointDriver;
+    private Rendering.Fx.FxOverlay? _fxOverlay;
+    private Rendering.Fx.AlarmPulseFx? _alarmPulse;
+    private Rendering.Fx.TransportParticlesFx? _transportParticles;
 
     public TwinView()
     {
@@ -50,6 +53,12 @@ public partial class TwinView : UserControl
 
     /// <summary>缺陷点云驱动（TA.8；TA.14 的 2D→3D 高亮经此接线）。</summary>
     public Rendering.Dynamics.DefectPointDriver? DefectPointDriver => _defectPointDriver;
+
+    /// <summary>FX 框架（TA.10；特效句柄层）。</summary>
+    public Rendering.Fx.FxOverlay? FxOverlay => _fxOverlay;
+
+    /// <summary>报警脉冲（TA.11；LOD 换档后调 Refresh 重建壳）。</summary>
+    public Rendering.Fx.AlarmPulseFx? AlarmPulse => _alarmPulse;
 
     /// <summary>渲染帧 → 自动 LOD 评估（VM 内部按 250ms 节流，开销可忽略）。</summary>
     private void OnViewportFrame(object? sender, TimeSpan delta)
@@ -129,6 +138,12 @@ public partial class TwinView : UserControl
         _waferMapDriver = null;
         _defectPointDriver?.Dispose();
         _defectPointDriver = null;
+        _transportParticles?.Dispose();
+        _transportParticles = null;
+        _alarmPulse?.Dispose();
+        _alarmPulse = null;
+        _fxOverlay?.Dispose();
+        _fxOverlay = null;
 
         _viewModel = e.NewValue as TwinSceneViewModel;
 
@@ -177,6 +192,16 @@ public partial class TwinView : UserControl
                 _viewModel.Visual,
                 () => _viewModel.Assembly);
             _defectPointDriver.OnFrame();
+
+            // FX 层（TA.10/TA.11）：报警脉冲常驻监听；传输粒子做晶圆流转演示动效
+            _fxOverlay = new Rendering.Fx.FxOverlay(Viewport);
+            _alarmPulse = new Rendering.Fx.AlarmPulseFx(
+                Viewport, _viewModel.VisualHub, () => _viewModel.Assembly, _fxOverlay);
+            _transportParticles = new Rendering.Fx.TransportParticlesFx(
+                Viewport,
+                _fxOverlay,
+                new System.Windows.Media.Media3D.Point3D(0.40, -0.62, 0.10), // Track 装载位
+                new System.Windows.Media.Media3D.Point3D(0.0, 0.0, 0.60));   // 检测位
         }
     }
 
@@ -185,6 +210,11 @@ public partial class TwinView : UserControl
         if (e.PropertyName == nameof(TwinSceneViewModel.IsImmersive) && _viewModel is not null)
         {
             ApplyImmersive(_viewModel.IsImmersive);
+        }
+        else if (e.PropertyName == nameof(TwinSceneViewModel.ActiveLod))
+        {
+            // LOD 换档 = 新装配实例：报警壳重建到新几何（TA.11）
+            _alarmPulse?.Refresh();
         }
     }
 

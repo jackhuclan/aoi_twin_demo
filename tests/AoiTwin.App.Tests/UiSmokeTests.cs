@@ -162,6 +162,17 @@ public class UiSmokeTests
                     System.Windows.Media.Color.FromRgb(0xFF, 0xC4, 0xC4), // PRD §5.5 通道 5
                     ringBrushes[4].Color);
 
+                // FX 层（TA.10/TA.11）：报警脉冲随 StatusEvent 同步触发/解除，特效摘除后
+                // FX 子树退出叠加层（"无 FX 不进 Draw Call"）
+                Assert.NotNull(twinView.FxOverlay);
+                Assert.Equal(1, twinView.FxOverlay!.ActiveCount); // 传输粒子演示流常驻
+                twin.VisualHub.Publish(TwinTopic.Status,
+                    new StatusEvent("ROBOT", "E-404", Severity.Alarm, null, DateTimeOffset.UtcNow));
+                Assert.Equal(2, twinView.FxOverlay.ActiveCount); // + 报警壳
+                twin.VisualHub.Publish(TwinTopic.Status,
+                    new StatusEvent("ROBOT", "E-404", Severity.Info, null, DateTimeOffset.UtcNow));
+                Assert.Equal(1, twinView.FxOverlay.ActiveCount); // 解除即摘
+
                 // 点选与台账信息区（T1.8）：列表 16 项、选中详情、清除选中
                 Assert.Equal(16, twin.PartSummaries.Count);
                 twin.SelectPart("STAGE");
