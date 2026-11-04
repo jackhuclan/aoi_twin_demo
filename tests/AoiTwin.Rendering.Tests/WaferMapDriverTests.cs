@@ -127,9 +127,9 @@ public sealed class WaferMapDriverTests : IDisposable
         {
             var (driver, viewport, _, _) = CreateDriver();
             driver.OnFrame();
-            Assert.Equal(1, viewport.OverlayRoot.Children.Count);
+            Assert.Single(viewport.OverlayRoot.Children);
             driver.Dispose();
-            Assert.Equal(0, viewport.OverlayRoot.Children.Count);
+            Assert.Empty(viewport.OverlayRoot.Children);
         });
     }
 

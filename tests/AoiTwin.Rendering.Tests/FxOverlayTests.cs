@@ -29,7 +29,7 @@ public sealed class FxOverlayTests : IDisposable
 
             // 判据（TA.10）：无 FX 时不进 Draw Call——FX 子树零节点且不挂入叠加层
             Assert.Equal(0, overlay.ActiveCount);
-            Assert.Equal(0, viewport.OverlayRoot.Children.Count);
+            Assert.Empty(viewport.OverlayRoot.Children);
         });
     }
 
@@ -43,12 +43,12 @@ public sealed class FxOverlayTests : IDisposable
 
             var handle = overlay.Attach(FxKind.AlarmPulse, "ROBOT", MakeMarker(0x11));
             Assert.Equal(1, overlay.ActiveCount);
-            Assert.Equal(1, viewport.OverlayRoot.Children.Count); // FX root 已挂入
+            Assert.Single(viewport.OverlayRoot.Children); // FX root 已挂入
 
             // 同键替换：数量不增，FX root 仍只有一个
             var handle2 = overlay.Attach(FxKind.AlarmPulse, "ROBOT", MakeMarker(0x22));
             Assert.Equal(1, overlay.ActiveCount);
-            Assert.Equal(1, viewport.OverlayRoot.Children.Count);
+            Assert.Single(viewport.OverlayRoot.Children);
 
             // 旧句柄 Dispose：同键已被替换，摘除静默（不误删新内容）
             handle.Dispose();
@@ -57,7 +57,7 @@ public sealed class FxOverlayTests : IDisposable
             // 句柄 Dispose 摘除
             handle2.Dispose();
             Assert.Equal(0, overlay.ActiveCount);
-            Assert.Equal(0, viewport.OverlayRoot.Children.Count); // 摘干净即退出叠加层
+            Assert.Empty(viewport.OverlayRoot.Children); // 摘干净即退出叠加层
 
             // 句柄幂等：重复 Dispose 不抛
             handle2.Dispose();

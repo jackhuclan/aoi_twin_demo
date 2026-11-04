@@ -37,23 +37,53 @@ public sealed record AxisCalibration(
 /// </summary>
 public sealed class TeachCoordinateMapper
 {
+    /// <summary>模型空间方向（编译后形态：热路径上避免字符串比较与 <c>ToUpperInvariant</c> 分配）。</summary>
+    private enum AxisDirection : byte
+    {
+        /// <summary>方向名非法：不动（比抛异常更适合渲染热路径）。</summary>
+        None = 0,
+        X = 1,
+        Y = 2,
+        Z = 3,
+    }
+
+    /// <summary>编译后的单轴标定：方向已解析为枚举，换算只剩乘加。</summary>
+    private readonly record struct CompiledAxis(AxisDirection Direction, double Scale, double Sign, double Offset);
+
     /// <summary>设备轴名 → 模型方向默认表（无标定时的恒等方向；机械手回转 R 暂按 X 平移占位）。</summary>
-    private static readonly IReadOnlyDictionary<string, string> DefaultDirections =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    private static readonly IReadOnlyDictionary<string, AxisDirection> DefaultDirections =
+        new Dictionary<string, AxisDirection>(StringComparer.OrdinalIgnoreCase)
         {
-            ["X"] = "X",
-            ["Y"] = "Y",
-            ["Z"] = "Z",
-            ["R"] = "X",
-            ["THETA"] = "X",
+            ["X"] = AxisDirection.X,
+            ["Y"] = AxisDirection.Y,
+            ["Z"] = AxisDirection.Z,
+            ["R"] = AxisDirection.X,
+            ["THETA"] = AxisDirection.X,
         };
 
-    private readonly ImmutableDictionary<(string PartId, string AxisName), AxisCalibration> _calibrations;
+    /// <summary>降级映射表（位置原样 → 默认方向，Scale=1/Sign=1/Offset=0），构造期一次算好。</summary>
+    private static readonly IReadOnlyDictionary<string, CompiledAxis> IdentityFallback =
+        DefaultDirections.ToDictionary(
+            pair => pair.Key,
+            pair => new CompiledAxis(pair.Value, Scale: 1, Sign: 1, Offset: 0),
+            StringComparer.OrdinalIgnoreCase);
+
+    private readonly ImmutableDictionary<(string PartId, string AxisName), CompiledAxis> _calibrations;
 
     public TeachCoordinateMapper(IEnumerable<AxisCalibration> calibrations)
     {
-        _calibrations = calibrations.ToImmutableDictionary(c => (c.PartId, c.AxisName));
+        _calibrations = calibrations.ToImmutableDictionary(
+            c => (c.PartId, c.AxisName),
+            c => new CompiledAxis(ParseDirection(c.Direction), c.Scale, c.Sign, c.Offset));
     }
+
+    private static AxisDirection ParseDirection(string? direction) => direction?.ToUpperInvariant() switch
+    {
+        "X" => AxisDirection.X,
+        "Y" => AxisDirection.Y,
+        "Z" => AxisDirection.Z,
+        _ => AxisDirection.None,
+    };
 
     /// <summary>空标定表（全部走恒等降级）。</summary>
     public static TeachCoordinateMapper Empty { get; } = new([]);
@@ -82,23 +112,24 @@ public sealed class TeachCoordinateMapper
     {
         if (_calibrations.TryGetValue((partId, axisName), out var cal))
         {
-            var distance = cal.Sign * devicePosition * cal.Scale + cal.Offset;
-            return cal.Direction.ToUpperInvariant() switch
-            {
-                "X" => (distance, 0, 0),
-                "Y" => (0, distance, 0),
-                "Z" => (0, 0, distance),
-                _ => (0, 0, 0), // 方向名非法：不动（比抛异常更适合渲染热路径）
-            };
+            return Project(cal, devicePosition);
         }
 
         // 恒等降级：默认方向表 + 位置原样
-        var direction = DefaultDirections.TryGetValue(axisName, out var d) ? d : null;
-        return direction switch
+        return IdentityFallback.TryGetValue(axisName, out var fallback)
+            ? Project(fallback, devicePosition)
+            : (0, 0, 0);
+    }
+
+    /// <summary>把设备位置投影到模型方向（纯乘加，无字符串、无分配——60fps 热路径调用）。</summary>
+    private static (double Dx, double Dy, double Dz) Project(CompiledAxis axis, double devicePosition)
+    {
+        var distance = axis.Sign * devicePosition * axis.Scale + axis.Offset;
+        return axis.Direction switch
         {
-            "X" => (devicePosition, 0, 0),
-            "Y" => (0, devicePosition, 0),
-            "Z" => (0, 0, devicePosition),
+            AxisDirection.X => (distance, 0, 0),
+            AxisDirection.Y => (0, distance, 0),
+            AxisDirection.Z => (0, 0, distance),
             _ => (0, 0, 0),
         };
     }

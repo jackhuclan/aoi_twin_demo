@@ -44,8 +44,16 @@
 |---|---|
 | `PartVisual.Rotation`（`RotateTransform3D?`）与 `PartVisual.Transform`（`Transform3DGroup`） | 几何按世界坐标烘焙，绕自身中心旋转必须 `T(c)·Rz·T(-c)`；M1 只有 `TranslateTransform3D` 无法表达 θ 轴 |
 | `MotionSyncDriver` 消费 `Matrix3D` 而非仅位移 | 同上 |
+| `PoseSnapshot.FromOwnedBuffer`（`internal`）与 `Timestamp` 的 `internal set` | NFR-13 要求帧内零分配：位姿合成改为**每部件双缓冲**（两块 16 元素缓冲轮换写入，写完换引用），不再每帧 `new double[16]` + `Clone()`。公开构造与语义不变（对外仍是不可变快照） |
+| `MotionPoseEngine.PartState.AxisArray`、`TwinVisualViewModel._motionArray` | `ConcurrentDictionary` 的枚举器每次都会复制节点数组（64 B/次），60fps 热路径不能枚举它；改为「集合增长时重建快照数组，渲染帧只读引用」 |
+| `TeachCoordinateMapper` 内部 `CompiledAxis`（`Direction` → `enum`） | 原先每次换算调用 `ToUpperInvariant()` 分配字符串；编译期解析后热路径只剩乘加 |
 
 **兼容性**：`PartVisual.Motion` 保留（M1 的 `BuildPicker` 与测试继续可用），新成员为 `null` 时行为与 M1 完全一致。
+
+**热路径约束（NFR-13，回归门禁）**：`tests/AoiTwin.Rendering.Tests/PerfProbeTests.cs` 断言
+「位姿合成 + VM 刷新 120 帧分配 = 0 B」「纹理/点云空帧 120 帧分配 = 0 B」「整帧 ≤ 96 B」。
+后续任何在 `GetPose` / `RefreshMotion` / `OnFrame` 里新增 `ToList()` / `Values` / 字符串操作 / LINQ 的改动都会让 CI 变红——
+这是刻意的：分配阈值一旦放宽，热路径就会慢慢腐化。
 
 ## 4. 决策 D-1：部件台账对齐数据侧命名
 

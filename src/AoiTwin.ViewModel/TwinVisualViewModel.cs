@@ -23,6 +23,7 @@ public sealed class TwinVisualViewModel : IDisposable
     private readonly ConcurrentDictionary<string, StatusEvent> _latestStatus = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, double>> _axisPositions = new(StringComparer.Ordinal);
     private readonly List<IDisposable> _subscriptions = [];
+    private MotionPartViewModel[] _motionArray = [];
     private long _handlerErrors;
     private bool _disposed;
 
@@ -86,8 +87,28 @@ public sealed class TwinVisualViewModel : IDisposable
     public event Action<TwinTopic, Exception>? HandlerError;
 
     /// <summary>取运动部件 VM（渲染装配时调用；数据尚未到达也先建好占位）。</summary>
-    public IMotionPartViewModel GetMotionPart(string partId) =>
-        _motionParts.GetOrAdd(partId, static id => new MotionPartViewModel(id));
+    public IMotionPartViewModel GetMotionPart(string partId)
+    {
+        var part = _motionParts.GetOrAdd(partId, static id => new MotionPartViewModel(id));
+        EnsureMotionArray();
+        return part;
+    }
+
+    /// <summary>
+    /// 帧循环用的无分配快照数组：<c>ConcurrentDictionary.Values</c> 每次调用都会复制一份 List，
+    /// 60fps 热路径不能用它。部件集合只在装配/首次消息时增长（冷路径），这里缓存数组、
+    /// 长度与字典计数不一致时重建——渲染帧内只读字段引用（NFR-13）。
+    /// </summary>
+    private void EnsureMotionArray()
+    {
+        var current = Volatile.Read(ref _motionArray);
+        if (current.Length == _motionParts.Count)
+        {
+            return;
+        }
+
+        Volatile.Write(ref _motionArray, [.. _motionParts.Values]);
+    }
 
     /// <summary>取光学部件 VM。</summary>
     public IOpticsPartViewModel GetOpticsPart(string partId) =>
@@ -107,12 +128,12 @@ public sealed class TwinVisualViewModel : IDisposable
             return;
         }
 
-        foreach (var part in _motionParts.Values)
+        foreach (var part in Volatile.Read(ref _motionArray))
         {
             var pose = _motionSource.GetPose(part.PartId, now);
             if (pose is not null)
             {
-                ((MotionPartViewModel)part).Update(pose);
+                part.Update(pose);
             }
         }
     }
