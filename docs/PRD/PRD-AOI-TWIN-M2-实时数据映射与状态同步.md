@@ -238,3 +238,25 @@ public interface IPartDetailDrillDown
 ## 9. 对下期的承诺（衔接 M3）
 
 M2 冻结并交付给 M3：节流分发与 VisualViewModel 契约（§5.1–5.2，M3 只读复用）、GPU 上传队列与 FX 框架（M3 的预警色/热力晕染/KPI 标注作为新 FX Kind 挂载）、钻取面板框架（M3 升级为健康度视图）。M3 允许的改动仅为：Hub 新增订阅方（持久化 Sink）、新增 `Alert` Topic 与对应 FX Kind、钻取面板内容扩展——不修改 M2 既有契约。
+
+---
+
+## 附录 A：实现状态（M2 交付后回填，不改变本文需求）
+
+| 文档 | 内容 |
+|---|---|
+| `docs/m2-acceptance-checklist.md` | 本文 §5–§7 逐条实现位置、自动化证据、验收状态与顺延项 |
+| `docs/m2-perf-report.md` | NFR-11/12/13/17 实测数据、测量口径、已知偏差、现场待测清单 |
+| `docs/m2-contract-baseline.md` | M1 冻结契约核对 + M2 新增契约 + 热路径约束 |
+| `docs/architecture-whitepaper-v0.1.md` §8 | M2 架构增量（ViewModel 层、节流链路、驱动器、DI 纪律） |
+
+**落地备注**（需求不变，只记录实现方式）：
+
+1. **NFR-18 配色**：`assets/light-channel-colors.json` 扩展为三表——`lightChannelColors`（必需）、
+   `defectClassColors`、`stateColors`；后者已含本 PRD 未要求的 `Warning`/`Critical` 两档，
+   为 M3 报警分级预留（键先行，M3 不必改 schema）。
+2. **FR-M2-01 策略文件**：JSON 只能表达「窗口 + KeepLatest」，`MergeKey` 是委托无法序列化；
+   轴策略在加载后统一补默认按键合并（`PartId|AxisName`），否则同窗口内逐轴消息互相覆盖。
+3. **FR-M2-03 旋转轴**：占位资产期 `R`/`THETA` 标定为 `Direction=NONE`（零位移），
+   `PoseSnapshot` 为 4×4 矩阵，真实 GLB 轴心资产到位后直接改用旋转矩阵，接口不变。
+4. **FR-M2-07 缺陷配色**：等级→颜色走配置文件（热加载），未配置的等级回落 §5.5 默认表，再回落中性灰。
