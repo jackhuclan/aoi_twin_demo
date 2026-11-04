@@ -139,7 +139,7 @@ public class TwinVisualViewModelTests
         hub.Publish(TwinTopic.Optics, new OpticsEvent("LIGHT_RING", OpticsKind.LightBrightness, 0, 0.9, now));
 
         var state = vm.GetOpticsPart("LIGHT_RING").ReadLatest();
-        Assert.Equal(0.7, state.ChannelValues[3]);
+        Assert.Equal(0.7, state.ChannelValues[2]); // 事件通道号 1 起始 → 数组 0 起始（VM 唯一换算点）
         Assert.Equal(0.9, state.Brightness);
         Assert.Equal(0, state.ChannelValues[0]); // 未动通道不受影响
     }

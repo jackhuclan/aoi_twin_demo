@@ -18,6 +18,7 @@ public partial class TwinView : UserControl
     private TwinSceneViewModel? _viewModel;
     private Rendering.Interaction.SelectionOutlineFx? _outline;
     private Rendering.Dynamics.MotionSyncDriver? _motionDriver;
+    private Rendering.Dynamics.OpticsSyncDriver? _opticsDriver;
 
     public TwinView()
     {
@@ -34,6 +35,9 @@ public partial class TwinView : UserControl
 
     /// <summary>运动同步驱动（TA.4，测试直接驱动单帧用；随 DataContext 生命周期重建）。</summary>
     public Rendering.Dynamics.MotionSyncDriver? MotionDriver => _motionDriver;
+
+    /// <summary>光学状态驱动（TA.5，测试直接驱动单帧用）。</summary>
+    public Rendering.Dynamics.OpticsSyncDriver? OpticsDriver => _opticsDriver;
 
     /// <summary>渲染帧 → 自动 LOD 评估（VM 内部按 250ms 节流，开销可忽略）。</summary>
     private void OnViewportFrame(object? sender, TimeSpan delta)
@@ -105,6 +109,8 @@ public partial class TwinView : UserControl
         // 驱动器跟随上一份 DataContext 生命周期释放
         _motionDriver?.Dispose();
         _motionDriver = null;
+        _opticsDriver?.Dispose();
+        _opticsDriver = null;
 
         _viewModel = e.NewValue as TwinSceneViewModel;
 
@@ -124,6 +130,14 @@ public partial class TwinView : UserControl
                 _viewModel.Visual,
                 () => _viewModel.Assembly,
                 _viewModel.ResolveDrivePartId);
+
+            // 光学状态（TA.5）：环光源 8 段变色 + 同轴发光壳，叠加视觉随装配重绑
+            _opticsDriver = new Rendering.Dynamics.OpticsSyncDriver(
+                Viewport,
+                _viewModel.Visual,
+                () => _viewModel.PaletteSource,
+                () => _viewModel.Assembly);
+            _opticsDriver.OnFrame();
         }
     }
 

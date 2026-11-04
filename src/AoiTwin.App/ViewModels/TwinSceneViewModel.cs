@@ -62,12 +62,14 @@ public sealed partial class TwinSceneViewModel : ObservableObject
     /// <param name="bookmarkService">书签存储。</param>
     /// <param name="visual">3D 视觉 VM（DI 注入共享实例；缺省自建独立 hub + 恒等标定引擎）。</param>
     /// <param name="hub">自建 Visual 时的总线（测试发布轴数据用）。</param>
+    /// <param name="paletteSource">通道配色文件源（DI 注入；缺省无文件走默认八色）。</param>
     public TwinSceneViewModel(
         string catalogPath,
         string assetsRoot,
         CameraBookmarkService bookmarkService,
         TwinVisualViewModel? visual = null,
-        IRealtimeHub? hub = null)
+        IRealtimeHub? hub = null,
+        LightChannelPaletteFileSource? paletteSource = null)
     {
         _catalogPath = catalogPath;
         _assetsRoot = assetsRoot;
@@ -80,9 +82,13 @@ public sealed partial class TwinSceneViewModel : ObservableObject
         Visual = visual ?? new TwinVisualViewModel(
             VisualHub,
             new MotionPoseEngine(TeachCoordinateMapper.Load(Path.Combine(assetsRoot, "teach-calibration.json"))));
+        PaletteSource = paletteSource;
 
         RefreshBookmarks();
     }
+
+    /// <summary>通道配色文件源（TA.5；null = 走 LightChannelPalette.Default 八色）。</summary>
+    public LightChannelPaletteFileSource? PaletteSource { get; }
 
     /// <summary>3D 视觉 VM（TA.4）：位姿/光学/Wafer 双缓冲的唯一持有者，驱动器每帧读取。</summary>
     public TwinVisualViewModel Visual { get; }

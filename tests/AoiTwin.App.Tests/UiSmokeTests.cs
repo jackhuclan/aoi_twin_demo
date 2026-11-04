@@ -150,6 +150,18 @@ public class UiSmokeTests
                 twin.SetLodMode(TwinLodMode.Near);
                 twinView.MotionDriver.OnFrame();
 
+                // 光学状态（TA.5 FR-M2-04）：通道事件直推 → 驱动器帧内变色（默认八色兜底）
+                Assert.NotNull(twinView.OpticsDriver);
+                twinView.OpticsDriver!.OnFrame();
+                var ringBrushes = EnumerateDiffuseBrushes(twinView);
+                Assert.Equal(8, ringBrushes.Count); // 8 段环 = 8 通道
+                twin.VisualHub.Publish(TwinTopic.Optics,
+                    new OpticsEvent("LIGHT_RING", OpticsKind.LightChannel, 5, 1.0, DateTimeOffset.UtcNow));
+                twinView.OpticsDriver.OnFrame();
+                Assert.Equal(
+                    System.Windows.Media.Color.FromRgb(0xFF, 0xC4, 0xC4), // PRD §5.5 通道 5
+                    ringBrushes[4].Color);
+
                 // 点选与台账信息区（T1.8）：列表 16 项、选中详情、清除选中
                 Assert.Equal(16, twin.PartSummaries.Count);
                 twin.SelectPart("STAGE");
@@ -284,5 +296,43 @@ public class UiSmokeTests
         }
 
         return Assert.Single(Directory.GetFiles(dir, "*.aotrec"));
+    }
+
+    private static List<System.Windows.Media.SolidColorBrush> EnumerateDiffuseBrushes(AoiTwin.App.Views.TwinView view)
+    {
+        var brushes = new List<System.Windows.Media.SolidColorBrush>();
+        void Walk(System.Windows.Media.Media3D.Model3D model)
+        {
+            if (model is System.Windows.Media.Media3D.GeometryModel3D { Material: System.Windows.Media.Media3D.DiffuseMaterial { Brush: System.Windows.Media.SolidColorBrush b } })
+            {
+                brushes.Add(b);
+            }
+            else if (model is System.Windows.Media.Media3D.Model3DGroup g)
+            {
+                foreach (var child in g.Children)
+                {
+                    Walk(child);
+                }
+            }
+        }
+
+        void WalkVisual(System.Windows.Media.Media3D.Visual3D visual)
+        {
+            if (visual is System.Windows.Media.Media3D.ModelVisual3D { Content: { } content })
+            {
+                Walk(content);
+            }
+
+            if (visual is System.Windows.Media.Media3D.ModelVisual3D mv)
+            {
+                foreach (var child in mv.Children)
+                {
+                    WalkVisual(child);
+                }
+            }
+        }
+
+        WalkVisual(view.TwinViewport.OverlayRoot);
+        return brushes;
     }
 }

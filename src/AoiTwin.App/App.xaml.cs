@@ -28,6 +28,9 @@ public partial class App : Application
             TeachCoordinateMapper.Load(Path.Combine(
                 AssetPackageLocator.LocateAssetsRoot(), "teach-calibration.json"))));
         builder.Services.AddSingleton<TwinVisualViewModel>();
+        // TA.5 光学状态：通道配色（PRD §5.5 schema，热加载；文件缺失回落默认八色）
+        builder.Services.AddSingleton(_ => new LightChannelPaletteFileSource(
+            Path.Combine(AssetPackageLocator.LocateAssetsRoot(), "light-channel-colors.json")));
         builder.Services.AddSingleton<TwinSceneViewModel>();
         builder.Services.AddSingleton<CollectionMonitorViewModel>();
         builder.Services.AddSingleton<ReplayViewModel>();

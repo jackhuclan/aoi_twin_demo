@@ -147,7 +147,13 @@ public sealed class TwinVisualViewModel : IDisposable
         switch (optics.Kind)
         {
             case OpticsKind.LightChannel:
-                part.UpdateChannel(optics.Channel, optics.Value, optics.Timestamp);
+                // 通道号契约：OpticsEvent.Channel 为 1 起始（与 PRD §5.5 配置键一致），
+                // 内部快照数组 0 起始——此处做唯一一次换算，驱动器两侧均按各自约定直读
+                if (optics.Channel >= 1)
+                {
+                    part.UpdateChannel(optics.Channel - 1, optics.Value, optics.Timestamp);
+                }
+
                 break;
             case OpticsKind.LightBrightness:
                 part.UpdateBrightness(optics.Value, optics.Timestamp);
