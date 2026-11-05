@@ -11,15 +11,33 @@ public class ContractTests
     private const string TestPartId = "ROBOT";
     private static readonly DateTimeOffset Ts = new(2026, 11, 3, 9, 0, 0, TimeSpan.FromHours(8));
 
+    private const int BaseTopicCount = 4;
+
+    /// <summary>
+    /// 契约重点不是「一共有几个 Topic」，而是**基值序号不变 + 新增只追加**：
+    /// Topic 是 .aotrec 帧头里的一个字节，M1 录制的文件必须永远可读。
+    /// M3 追加了 Alert（=4），此测试由「断言只有四个」改为「断言前四个值不变、后续只追加」。
+    /// </summary>
     [Fact]
-    public void TwinTopic_contains_four_base_topics()
+    public void TwinTopic_keeps_base_values_and_only_appends()
     {
+        Assert.Equal(0, (int)TwinTopic.Motion);
+        Assert.Equal(1, (int)TwinTopic.Status);
+        Assert.Equal(2, (int)TwinTopic.Optics);
+        Assert.Equal(3, (int)TwinTopic.Result);
+
         var values = Enum.GetValues<TwinTopic>();
-        Assert.Equal(4, values.Length);
-        Assert.Contains(TwinTopic.Motion, values);
-        Assert.Contains(TwinTopic.Status, values);
-        Assert.Contains(TwinTopic.Optics, values);
-        Assert.Contains(TwinTopic.Result, values);
+        Assert.True(values.Length >= BaseTopicCount, "基值 Topic 不得被删除");
+
+        // 追加项必须排在基值之后，且不得出现空洞（空洞意味着有人插入或删值）
+        var expected = new TwinTopic[values.Length];
+        for (var i = 0; i < values.Length; i++)
+        {
+            expected[i] = (TwinTopic)i;
+        }
+
+        Assert.Equal(expected, values);
+        Assert.Contains(TwinTopic.Alert, values); // M3 增量
     }
 
     [Fact]
