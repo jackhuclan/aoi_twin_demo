@@ -1,18 +1,40 @@
 <Solution>
-  <!-- AOI 数字孪生一期（M1）解决方案骨架（PLAN-AOI-TWIN-M1 §1） -->
-  <Project Path="src/AoiTwin.Core/AoiTwin.Core.csproj" />
-  <Project Path="src/AoiTwin.Adapters/AoiTwin.Adapters.csproj" />
-  <Project Path="src/AoiTwin.Adapters.Mock/AoiTwin.Adapters.Mock.csproj" />
-  <Project Path="src/AoiTwin.Rendering/AoiTwin.Rendering.csproj" />
-  <Project Path="src/AoiTwin.App/AoiTwin.App.csproj" />
-  <Project Path="src/AoiTwin.AssetTools/AoiTwin.AssetTools.csproj" />
-  <Project Path="src/AoiTwin.ViewModel/AoiTwin.ViewModel.csproj" />
-  <Project Path="tests/AoiTwin.Core.Tests/AoiTwin.Core.Tests.csproj" />
-  <Project Path="tests/AoiTwin.Adapters.Tests/AoiTwin.Adapters.Tests.csproj" />
-  <Project Path="tests/AoiTwin.AssetTools.Tests/AoiTwin.AssetTools.Tests.csproj" />
-  <Project Path="tests/AoiTwin.App.Tests/AoiTwin.App.Tests.csproj" />
-  <Project Path="tests/AoiTwin.Rendering.Tests/AoiTwin.Rendering.Tests.csproj" />
-  <Project Path="tests/AoiTwin.ViewModel.Tests/AoiTwin.ViewModel.Tests.csproj" />
-  <Project Path="tests/AoiTwin.Regression.Tests/AoiTwin.Regression.Tests.csproj" />
-  <Project Path="tools/AoiTwin.Soak/AoiTwin.Soak.csproj" />
+  <!--
+    分层结构与磁盘一致（见 AGENTS.md §4）：
+    Solution Items = 解决方案级文件；src = 源码；tests = 测试；tools = 工具。
+    新增项目必须加入对应分组，分组名固定，不再新增一级分组。
+  -->
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="nuget.config" />
+    <File Path="README.md" />
+    <File Path="AGENTS.md" />
+  </Folder>
+
+  <Folder Name="/src/">
+    <Project Path="src/AoiTwin.Core/AoiTwin.Core.csproj" />
+    <Project Path="src/AoiTwin.ViewModel/AoiTwin.ViewModel.csproj" />
+    <Project Path="src/AoiTwin.Adapters/AoiTwin.Adapters.csproj" />
+    <Project Path="src/AoiTwin.Adapters.Mock/AoiTwin.Adapters.Mock.csproj" />
+    <Project Path="src/AoiTwin.Rendering/AoiTwin.Rendering.csproj" />
+    <Project Path="src/AoiTwin.App/AoiTwin.App.csproj" />
+    <Project Path="src/AoiTwin.AssetTools/AoiTwin.AssetTools.csproj" />
+  </Folder>
+
+  <Folder Name="/tests/">
+    <Project Path="tests/AoiTwin.Core.Tests/AoiTwin.Core.Tests.csproj" />
+    <Project Path="tests/AoiTwin.ViewModel.Tests/AoiTwin.ViewModel.Tests.csproj" />
+    <Project Path="tests/AoiTwin.Adapters.Tests/AoiTwin.Adapters.Tests.csproj" />
+    <Project Path="tests/AoiTwin.AssetTools.Tests/AoiTwin.AssetTools.Tests.csproj" />
+    <Project Path="tests/AoiTwin.Rendering.Tests/AoiTwin.Rendering.Tests.csproj" />
+    <Project Path="tests/AoiTwin.App.Tests/AoiTwin.App.Tests.csproj" />
+    <Project Path="tests/AoiTwin.Regression.Tests/AoiTwin.Regression.Tests.csproj" />
+    <Project Path="tests/AoiTwin.Analytics.Tests/AoiTwin.Analytics.Tests.csproj" />
+  </Folder>
+
+  <Folder Name="/tools/">
+    <Project Path="tools/AoiTwin.Soak/AoiTwin.Soak.csproj" />
+  </Folder>
 </Solution>
