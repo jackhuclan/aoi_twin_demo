@@ -286,3 +286,22 @@ AnalyticsOptions（阈值/权重）  ┘        （实现 IAnalyticsContext）  
 
 插件加载的安全默认：`PluginLoadOptions.AllowedPublicKeyTokens` **为空即全拒**。
 现场要加载自定义 DLL，必须先配置公司公钥 token——这条在 `m3-plugin-guide.md` 里有完整流程。
+
+### 9.7 App 装配：`AnalyticsRuntime` 组合根
+
+分析链路进入主界面的方式与 M2 的教训（§8 假接线）同构：**注册表只有一份，测试解析真实容器**。
+
+```
+AppServices.AddAoiTwinAnalytics
+  ├─ AnalyticsRuntimeOptions（存储/导出目录、参数文件、AutoStart —— 测试覆盖为临时目录）
+  ├─ AnalyticsRuntime：Sink + 聚合器 + 评分器 + 调度器 + 导出器的组合根
+  │    · Snapshot()   只读内存，健康页 1Hz 刷新不碰磁盘
+  │    · AnalyzeNow() 唯一读库入口（后台线程），预警经 Alert Topic 回流 3D
+  └─ HealthAnalyticsViewModel / HealthAnalyticsView（第 5 页签，只做格式化与命令编排）
+```
+
+两条纪律：
+- **视图模型不拥有定时器以外的任何资源**：磁盘、线程、库连接都在 Runtime；
+  VM 的 `Dispose` 只停自己的刷新定时器，不 Dispose Runtime（容器统一管理生命周期）。
+- **降级必须可见**：落盘失败 / 参数文件失效 / 预测器异常都会变成页面提示条，
+  且各有一条测试锁定——「界面能开但坏消息被吞掉」比崩溃更难在现场发现。

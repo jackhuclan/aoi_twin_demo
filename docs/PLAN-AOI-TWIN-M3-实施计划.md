@@ -136,6 +136,7 @@
 | TB.14 缺陷热力 | ✅ | `Rendering/Fx/DefectHeatmapFx.cs`；密度 8 档合并（≤8 Draw Call）、可开关 |
 | TB.15 UI3D KPI | ✅ | `Rendering/Overlay/KpiBadgeOverlay.cs` + `WorldToScreenProjector`（纯数学可测、1s 节流） |
 | TB.16 对外导出 | ✅ | `Core/Analytics/Export/AnalyticsExportService.cs`；CSV/JSON 同源、三角色 ACL、脱敏、原子写（4 例） |
+| TB.16b 健康页接入 | ✅ | App 第 5 页签：`AnalyticsRuntime`（组合根）+ `HealthAnalyticsViewModel/View`；降级提示条有测试锁定（5 例） |
 | TB.17 扩展性演示 | ✅ | `ExtensibilityTests`：新增模型零改动 + 新增数据源（`StatusEvent` 自定义 `EventCode`）+ 结构断言（Core 不引用 Rendering/WPF） |
 | TB.18 30 天长稳 | ✅ 离线 / 🏭 真机 | `tools/AoiTwin.Soak analytics`（2160 条 / 31 分区 / 504ms，result=PASS）+ `SoakSimulationTests`（内存 < 64MB） |
 | TB.19 文档收口 | ✅ 待评审 | `docs/m3-implementation-status.md`、`m3-field-verification.md`、`m3-plugin-guide.md`、白皮书 §9、README |

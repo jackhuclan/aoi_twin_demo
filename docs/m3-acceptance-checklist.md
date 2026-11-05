@@ -18,7 +18,7 @@
 | 6 | 扩展性：插件新增 1 模型 + 1 路数据源，Hub/渲染零改动 | ✅ | 无（有结构断言） |
 | 7 | 文档：白皮书、接入指南、插件开发指南评审 | 🟡 | 文档已成文（本批）；待评审签字 |
 
-**总体判定**：实现层全部收口（43 例全绿、0 警告 0 错误）；剩余 🟡 全部为外部条件
+**总体判定**：实现层全部收口（全量 303 例全绿、0 警告 0 错误）；剩余 🟡 全部为外部条件
 （真实数据、LOD0 资产、30 天窗口、评审会），不是代码缺口。
 
 ---
@@ -116,7 +116,7 @@
 | `docs/m3-field-verification.md`（真机验证点） | ✅ 待评审 |
 | `docs/m3-plugin-guide.md`（插件开发指南） | ✅ 待评审 |
 | `docs/architecture-whitepaper-v0.1.md`（§9 M3 增量） | ✅ 待评审 |
-| `README.md` / `PLAN-AOI-TWIN-M3`（功能表、测试矩阵 298、`analytics` 用法、§6 执行进度） | ✅ |
+| `README.md` / `PLAN-AOI-TWIN-M3`（功能表、测试矩阵 303、`analytics` 用法、§6 执行进度） | ✅ |
 
 ---
 
@@ -125,8 +125,8 @@
 | 项 | 实测 | 状态 |
 |---|---|---|
 | 构建 | `dotnet build AoiTwin.slnx -c Release` → 0 警告 0 错误 | ✅ |
-| M3 测试 | `AoiTwin.Analytics.Tests` **43 例全绿**（517 ms） | ✅ |
-| 全量测试 | **298 例**（M1+M2 255 + M3 43），见 README 测试矩阵 | ✅ |
+| M3 测试 | `AoiTwin.Analytics.Tests` **43 例全绿**（517 ms）+ App 健康页 5 例（评分/降级提示/行复用/DI 接线） | ✅ |
+| 全量测试 | **303 例**（M1+M2 255 + M3 43 + App 健康页 5），见 README 测试矩阵 | ✅ |
 | 分层 | 解决方案按 Solution Items / src / tests / tools 组织（`AGENTS.md`） | ✅ |
 
 ---

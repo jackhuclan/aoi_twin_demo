@@ -26,6 +26,7 @@
 | 插件框架 | `IAlertPredictor` 注册即生效；外部 DLL 走强名公钥白名单（**默认全拒**）+ 可卸载 AssemblyLoadContext |
 | 渲染终调 | LOD0 三档（opt-in：资产缺失自动退回两档）、静态合批（按运动组+颜色，保留 UV/法线）、上传分帧 4MB/帧、缺陷热力 ≤8 Draw Call、UI3D KPI 1s 节流 |
 | 对外导出 | 健康档案 / 预警历史 / 时序片段导出 CSV·JSON；三角色 ACL（Viewer/Engineer/Admin）+ 脱敏 + 原子写 |
+| 健康分析页 | 主界面第 5 页签：部件评分列表（按分数升序 + 等级色条）、扣分因子钻取、预警时间线、分析口径与落盘状态；周期分析后台运行（默认 5 分钟），「立即分析」读库在后台线程；落盘降级 / 参数文件失效 / 预测器异常都在页面上以提示条可见 |
 
 > 模型口径与真机验证点见 `docs/m3-field-verification.md`；实现对照与实测见 `docs/m3-implementation-status.md`。
 
@@ -58,7 +59,7 @@
 
 ```bash
 dotnet build AoiTwin.slnx          # 0 警告 0 错误为合并门槛
-dotnet test AoiTwin.slnx           # 全部测试（298 例）
+dotnet test AoiTwin.slnx           # 全部测试（303 例）
 dotnet run --project src/AoiTwin.App
 ```
 
@@ -179,10 +180,10 @@ tools/AoiTwin.Soak      稳定性/性能控制台：soak、bench、soak-visual�
 | `AoiTwin.ViewModel.Tests` | 42 | 位姿引擎、VM 聚合、配色、缺陷列表、装载状态 |
 | `AoiTwin.Adapters.Tests` | 23 | 四路适配器与 Mock 链路 |
 | `AoiTwin.AssetTools.Tests` | 13 | 资产校验 E001–E007 |
-| `AoiTwin.App.Tests` | 14 | 联动服务、钻取、UI 冒烟（端到端）、DI 装配一致性 |
+| `AoiTwin.App.Tests` | 19 | 联动服务、钻取、UI 冒烟（端到端）、DI 装配一致性、健康页（评分/降级提示/行复用） |
 | `AoiTwin.Regression.Tests` | 1 | 回放回归（FR-M2-03~07，**独立进程**：WPF 多 STA 用例同进程会互相拖死） |
 
-合计 **298 例**。`AoiTwin.Analytics.Tests` 同时引用 Core / ViewModel / Rendering，
+合计 **303 例**。`AoiTwin.Analytics.Tests` 同时引用 Core / ViewModel / Rendering，
 并可无头驱动渲染侧纯逻辑（合批、LOD 选择、上传预算、投影、热力分档）。
 
 ## 提交约定

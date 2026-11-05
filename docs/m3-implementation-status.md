@@ -91,39 +91,31 @@
 | 2 | L0 资产未到 | NFR-19（LOD0 ≥45fps）无法测 | 资产到货后填 `LodPackage.Close` 并复测 |
 | 3 | 插件公钥白名单为空 | 现场无法加载自定义 DLL（安全默认） | 配置公司公钥 token 后验证（验证清单 §6） |
 | 4 | 节拍站点靠 WaferId 前缀解析 | 若设备命名不含站点，全部归入 `ALL`，瓶颈分析失效 | 真机改为结果队列的站点字段（验证清单 §4） |
-| 5 | App 未挂健康页签 | 分析结果目前经导出/报告查看，未进主界面 | 接入点见 §5，UI 属 M3 之后的界面迭代 |
+
+> 原缺口 #5「App 未挂健康页签」已关闭：健康分析页随 0.3.0 接入主界面（见 §5）。
 
 ---
 
-## 5. App 集成接入点（未接线，保持零副作用）
+## 5. App 集成（已接线）
 
-M3 服务均为 `Core` 中的普通类，**不自动启动**（避免打开界面就写盘）。现场启用时按下面顺序接线：
+分析链路随 0.3.0 进入主界面第 5 页签「健康分析」，装配在 `AppServices.AddAoiTwinAnalytics`：
 
-```csharp
-// AppServices.AddAoiTwinAnalytics(rootPath, optionsPath) 建议内容
-var optionsProvider = new AnalyticsOptionsProvider(optionsPath);   // 文件缺失/非法 → 代码默认值 + LastError
-services.AddSingleton(optionsProvider);
-
-services.AddSingleton<ITimeSeriesStore>(_ => new FileTimeSeriesStore(rootPath));
-services.AddSingleton(sp => new PersistenceSink(
-    sp.GetRequiredService<ITimeSeriesStore>(),
-    sp.GetRequiredService<IRealtimeHub>(),
-    new PersistenceOptions(rootPath)));
-services.AddSingleton(sp => new PartHealthAggregator(sp.GetRequiredService<IRealtimeHub>()));
-services.AddSingleton<HealthScorer>();
-services.AddSingleton(sp => {
-    var registry = new PredictorRegistry();
-    registry.RegisterRange([new LightDecayPredictor(), new AxisWearPredictor(), new TactTrendAnalyzer()]);
-    return registry;
-});
-services.AddSingleton(sp => new AlertScheduler(
-    sp.GetRequiredService<IRealtimeHub>(),
-    sp.GetRequiredService<PredictorRegistry>(),
-    () => new AnalyticsContext(DateTimeOffset.UtcNow,
-        sp.GetRequiredService<PartHealthAggregator>().Snapshot(),
-        sp.GetRequiredService<AnalyticsOptionsProvider>().Current,   // 每轮取当前值 = 天然热加载
-        sp.GetRequiredService<ITimeSeriesStore>())));
 ```
+IRealtimeHub ─┬─ PersistenceSink ── ITimeSeriesStore（默认 %LOCALAPPDATA%\AoiTwin\timeseries，
+              │                      测试/离线用 AnalyticsRuntimeOptions 覆盖到临时目录）
+              ├─ PartHealthAggregator（实时档案）
+              └─ AlertScheduler ── PredictorRegistry（三模型）+ AnalyticsOptionsProvider
+                                     （assets/analytics-options.json，坏文件保旧值）
+
+AnalyticsRuntime（App/Services）= 上述组件的组合根：
+  Snapshot()  只读内存（档案 + 评分 + 统计），1Hz 刷新不碰磁盘
+  AnalyzeNow() 唯一读库入口（后台线程），发布预警 → Alert Topic → 3D 状态色
+  Export*()    Engineer 角色导出健康 CSV / 预警 JSON
+HealthAnalyticsViewModel 只做格式化与命令编排；HealthAnalyticsView 全部经命令绑定。
+```
+
+降级可见性（页面提示条，均有测试锁定）：时序写失败 →「落盘降级」红条（实时链路不受影响）；
+参数文件非法 →「沿用上一次可用配置」黄条；预测器异常 → 列出失败模型与其余结论仍有效。
 
 渲染侧：`AlertStateFx` 与 `AlarmPulseFx` 同参构造（viewpoint/hub/assemblyProvider/overlay），
 在 `TwinView.xaml.cs` 装配 FX 的位置一并创建并 `Refresh()` 于换档之后。
