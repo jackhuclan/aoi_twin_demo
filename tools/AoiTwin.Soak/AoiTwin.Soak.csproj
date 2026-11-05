@@ -13,6 +13,7 @@
     <ProjectReference Include="..\..\src\AoiTwin.Adapters\AoiTwin.Adapters.csproj" />
     <ProjectReference Include="..\..\src\AoiTwin.Adapters.Mock\AoiTwin.Adapters.Mock.csproj" />
     <ProjectReference Include="..\..\src\AoiTwin.Rendering\AoiTwin.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\AoiTwin.ViewModel\AoiTwin.ViewModel.csproj" />
   </ItemGroup>
 
 </Project>

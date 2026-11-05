@@ -12,15 +12,28 @@ using AoiTwin.Rendering.Scene;
 namespace AoiTwin.Soak;
 
 /// <summary>
-/// M1 验收工具（T4.2/T4.3）：
+/// 验收工具（M1：T4.2/T4.3；M2：TA.18）：
 ///   soak &lt;minutes&gt; &lt;recordDir&gt; &lt;reportPath&gt;           — Mock 全链路浸泡（采集+录制+内存采样）
 ///   bench &lt;catalogPath&gt; &lt;assetsRoot&gt; &lt;reportPath&gt;       — NFR-01/02/03 性能基准（Hub/GLB/点选/录制写入）
-/// 报告为键值文本，验收文档（docs/m1-*）直接引用其中的实测数字。
+///   soak-visual &lt;minutes&gt; &lt;reportPath&gt; [选项]             — 带 VM 与渲染循环的长跑（帧率衰减/渲染态内存）
+/// 报告为键值文本，验收文档（docs/m1-*、docs/m2-*）直接引用其中的实测数字。
 /// </summary>
 internal static class Program
 {
+    // STA：soak-visual 要开窗口跑 WPF 渲染循环（CompositionTarget 需要桌面会话与合成器）
+    [STAThread]
     private static int Main(string[] args)
     {
+        // 中文输出：默认代码页在英文系统/CI 上会把报告正文打成乱码
+        try
+        {
+            Console.OutputEncoding = Encoding.UTF8;
+        }
+        catch (IOException)
+        {
+            // 重定向到不支持编码设置的宿主时保持默认（报告文件本身始终是 UTF-8）
+        }
+
         if (args.Length == 4 && args[0] == "soak")
         {
             return RunSoak(args[1], args[2], args[3]);
@@ -31,10 +44,86 @@ internal static class Program
             return RunBench(args[1], args[2], args[3]);
         }
 
+        if (args.Length >= 3 && args[0] == "soak-visual")
+        {
+            return RunVisualSoak(args);
+        }
+
         Console.Error.WriteLine("用法:");
         Console.Error.WriteLine("  AoiTwin.Soak soak <minutes> <recordDir> <reportPath>");
         Console.Error.WriteLine("  AoiTwin.Soak bench <catalogPath> <assetsRoot> <reportPath>");
+        Console.Error.WriteLine("  AoiTwin.Soak soak-visual <minutes> <reportPath> [选项]");
+        Console.Error.WriteLine("    选项：--assets <dir>       资产根（缺省向上查找 assets/part-catalog.json）");
+        Console.Error.WriteLine("          --wafer-sec <6.5>    晶圆结果间隔秒（现场节拍，改小等于放大点云增长）");
+        Console.Error.WriteLine("          --defects <4>        每片缺陷数均值");
+        Console.Error.WriteLine("          --size <1600x900>    渲染窗口尺寸");
+        Console.Error.WriteLine("          --visible            窗口可见（默认移到屏幕外）");
+        Console.Error.WriteLine("          --sample-sec <30>    采样周期");
+        Console.Error.WriteLine("          --warmup-min <5>     预热时长（超过计划时长 10% 时按 10% 收）");
         return 2;
+    }
+
+    // ---------------------------------------------------------- soak-visual
+
+    private static int RunVisualSoak(string[] args)
+    {
+        if (!double.TryParse(args[1], out var minutes) || minutes <= 0)
+        {
+            Console.Error.WriteLine($"非法时长: {args[1]}");
+            return 2;
+        }
+
+        var options = new VisualSoakOptions { Minutes = minutes, ReportPath = args[2] };
+
+        for (var i = 3; i < args.Length; i++)
+        {
+            switch (args[i])
+            {
+                case "--assets" when i + 1 < args.Length:
+                    options = options with { AssetsRoot = args[++i] };
+                    break;
+                case "--wafer-sec" when i + 1 < args.Length && double.TryParse(args[i + 1], out var waferSec) && waferSec > 0:
+                    options = options with { WaferIntervalSec = waferSec };
+                    i++;
+                    break;
+                case "--defects" when i + 1 < args.Length && int.TryParse(args[i + 1], out var defects) && defects >= 0:
+                    options = options with { DefectsPerWafer = defects };
+                    i++;
+                    break;
+                case "--size" when i + 1 < args.Length && TryParseSize(args[i + 1], out var width, out var height):
+                    options = options with { Width = width, Height = height };
+                    i++;
+                    break;
+                case "--visible":
+                    options = options with { Visible = true };
+                    break;
+                case "--sample-sec" when i + 1 < args.Length && int.TryParse(args[i + 1], out var sampleSec) && sampleSec >= 1:
+                    options = options with { SampleSeconds = sampleSec };
+                    i++;
+                    break;
+                case "--warmup-min" when i + 1 < args.Length && double.TryParse(args[i + 1], out var warmup) && warmup >= 0:
+                    options = options with { WarmupMinutes = warmup };
+                    i++;
+                    break;
+                default:
+                    Console.Error.WriteLine($"无法识别的参数: {args[i]}");
+                    return 2;
+            }
+        }
+
+        return VisualSoak.Run(options);
+    }
+
+    private static bool TryParseSize(string raw, out int width, out int height)
+    {
+        width = 0;
+        height = 0;
+        var parts = raw.Split('x', 'X');
+        return parts.Length == 2
+            && int.TryParse(parts[0], out width)
+            && int.TryParse(parts[1], out height)
+            && width >= 320
+            && height >= 240;
     }
 
     // ---------------------------------------------------------------- soak
