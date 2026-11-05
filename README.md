@@ -75,11 +75,25 @@ dotnet run --project src/AoiTwin.AssetTools -- verify <file.aotrec> [--repair]  
 - 现场班次采集作业指导：`docs/field-collection-runbook.md`；登记清单：`assets/recordings/manifest.md`；
 - Mock 数据集：`AoiTwin.Adapters.Mock`（CI 全链路冒烟与回放回归的数据源）。
 
+## 长跑（TA.18）
+
+渲染侧长跑要开窗才量得到帧率（WPF 帧节拍来自窗口合成），故 `soak-visual` 会建一个屏幕外窗口，
+把「六路同步驱动器 + 报警/粒子 FX + 跟随相机」按主程序的装配顺序挂进帧循环：
+
+```bash
+tools\soak-visual.cmd                                                        # 72h（现场窗口 B）
+AoiTwin.Soak soak-visual 30 docs\_soak-visual-30m.txt --sample-sec 30 --warmup-min 3   # 离线自检
+```
+
+输出三件套：报告（判据 + 抽稀明细）、`.progress`（30s 心跳，崩溃物证）、`.csv`（内存/帧率曲线）。
+判据与判读规则见 `docs/m2-stability-report.md`。
+
 ## 验收与报告
 
 | 文档 | 内容 |
 |------|------|
 | `docs/m2-perf-report.md` | M2 NFR-11/12/13/17 实测 + 口径 + 已知偏差 + 现场待测清单 |
+| `docs/m2-stability-report.md` | M2 长跑（TA.18）：判据、`soak-visual` 用法、现场流程、判读规则、30 分钟自检 |
 | `docs/m2-acceptance-checklist.md` | M2 PRD §7 七项验收逐条打勾 + 证据 + M3 冻结清单 |
 | `docs/m2-contract-baseline.md` | M1 冻结契约核对 + M2 新增契约 |
 | `docs/PLAN-AOI-TWIN-M2-实施计划.md` | M2 任务分解与完成状态 |
@@ -98,7 +112,7 @@ AoiTwin.Rendering       HelixToolkit 视口、相机书签与跟随、LOD、点�
                         Dynamics（运动/光学/视野锥/纹理/点云/装载）、Fx（描边/脉冲/粒子）、帧时间探针
 AoiTwin.AssetTools      资产校验 / 录制校验 / 占位资产生成 CLI
 AoiTwin.App             WPF 主程序（DI 组装、四个主页面、右侧六页签、深色主题）
-tools/AoiTwin.Soak      浸泡稳定性 / 性能基准控制台
+tools/AoiTwin.Soak      稳定性/性能控制台：soak（采集浸泡）、bench（基准）、soak-visual（渲染长跑）
 ```
 
 各层为独立类库、依赖单向（App → Rendering / ViewModel / Adapters → Core）——这是三期

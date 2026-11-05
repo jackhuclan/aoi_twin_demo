@@ -61,6 +61,10 @@ dotnet run --project src/AoiTwin.AssetTools -- verify <file.aotrec>
 - 本任务完成的 3 个班次文件是 T4.4 验收第 3 条（数据闭环）的物证；
 - M2 的回放-运动对齐测试依赖其中的真实轨迹（Mock 轨迹不能替代）。
 
+> 同一批窗口若同时承担 M2 的长跑（TA.18），作业步骤不同：采集侧用 `soak`，渲染侧用
+> `soak-visual`，判据与巡检表见 `docs/m2-stability-report.md` §5——两者不要混着跑，
+> 同机并发会互相抢 IO 与 GPU，帧率结论不可用。
+
 ## 7. 风险与替代
 
 | 风险 | 应对 |

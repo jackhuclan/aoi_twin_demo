@@ -1,0 +1,107 @@
+mode=soak-visual
+started=2026-11-05 08:41:19
+finished=2026-11-05 09:11:20
+plannedMinutes=30.0
+actualDuration=00:30:00
+machine=SU104003344
+processor=20C
+os=Microsoft Windows NT 10.0.26300.0
+runtime=10.0.14
+assetsRoot=E:\aoi_twin_demo\assets
+catalog=E:\aoi_twin_demo\assets\part-catalog.json
+version=0.2.0.0
+scene=glb
+scene.parts=16
+scene.triangles=468
+scene.meshesL1=16
+scene.meshesL2=7
+drivers=motion,optics,frustum,wafermap,defects,handling,fx(alarm,particles),followCamera
+feed=mock waferSec=6.5 defectsPerWafer=4
+window=1600x900 offscreen
+frameClock=rendering
+warmupMinutes=3.0
+framesRendered=104339
+framesPumped=0
+longFrames=3
+baselineWorkingSetMB=420
+maxWorkingSetMB=429
+maxGrowthMB=9
+growthRateMBPerHour=NA
+baselineFps=58.0
+tailFps=58.1
+fpsDecayPercent=-0.08
+fpsJudged=yes
+wafers=278
+defectPoints=1123
+droppedWafers=0
+handlerErrors=0
+gc.gen0=30
+gc.gen1=4
+gc.gen2=1
+samples=60
+memoryGrowthOk=True
+fpsDecayOk=True
+handlerOk=True
+result=PASS
+
+---- 采样明细（抽稀） ----
+sample t=00:00:29 ws=422MB private=356MB heap=4MB fps=58.2 p95=18.8ms wafers=5 points=22 errors=0 drops=0 gen2=0
+sample t=00:01:00 ws=417MB private=351MB heap=10MB fps=58.0 p95=19.8ms wafers=10 points=39 errors=0 drops=0 gen2=0
+sample t=00:01:30 ws=420MB private=353MB heap=4MB fps=58.0 p95=19.4ms wafers=14 points=54 errors=0 drops=0 gen2=0
+sample t=00:02:00 ws=421MB private=354MB heap=9MB fps=57.8 p95=19.6ms wafers=19 points=76 errors=0 drops=0 gen2=0
+sample t=00:02:30 ws=419MB private=352MB heap=3MB fps=58.1 p95=19.5ms wafers=24 points=98 errors=0 drops=0 gen2=0
+sample t=00:03:00 ws=420MB private=352MB heap=9MB fps=58.2 p95=19.2ms wafers=28 points=114 errors=0 drops=0 gen2=0
+sample t=00:03:30 ws=420MB private=352MB heap=3MB fps=57.7 p95=19.4ms wafers=33 points=133 errors=0 drops=0 gen2=0
+sample t=00:04:00 ws=422MB private=355MB heap=9MB fps=58.0 p95=19.5ms wafers=37 points=146 errors=0 drops=0 gen2=0
+sample t=00:04:30 ws=420MB private=353MB heap=3MB fps=58.0 p95=18.5ms wafers=42 points=169 errors=0 drops=0 gen2=0
+sample t=00:05:00 ws=421MB private=353MB heap=8MB fps=57.9 p95=19.4ms wafers=47 points=190 errors=0 drops=0 gen2=0
+sample t=00:05:30 ws=421MB private=354MB heap=2MB fps=57.9 p95=19.9ms wafers=51 points=202 errors=0 drops=0 gen2=0
+sample t=00:06:00 ws=423MB private=354MB heap=8MB fps=58.2 p95=19.6ms wafers=56 points=220 errors=0 drops=0 gen2=0
+sample t=00:06:30 ws=427MB private=358MB heap=2MB fps=58.0 p95=19.4ms wafers=61 points=242 errors=0 drops=0 gen2=0
+sample t=00:07:00 ws=424MB private=356MB heap=8MB fps=58.1 p95=18.8ms wafers=65 points=257 errors=0 drops=0 gen2=0
+sample t=00:07:30 ws=424MB private=356MB heap=2MB fps=58.1 p95=18.2ms wafers=70 points=281 errors=0 drops=0 gen2=0
+sample t=00:08:00 ws=424MB private=356MB heap=8MB fps=58.0 p95=19.5ms wafers=74 points=302 errors=0 drops=0 gen2=0
+sample t=00:08:30 ws=424MB private=355MB heap=2MB fps=58.1 p95=19.4ms wafers=79 points=325 errors=0 drops=0 gen2=0
+sample t=00:09:00 ws=424MB private=356MB heap=8MB fps=57.9 p95=19.5ms wafers=84 points=349 errors=0 drops=0 gen2=0
+sample t=00:09:30 ws=422MB private=353MB heap=-1MB fps=57.8 p95=19.7ms wafers=88 points=361 errors=0 drops=0 gen2=0
+sample t=00:10:00 ws=422MB private=353MB heap=4MB fps=58.1 p95=19.7ms wafers=93 points=383 errors=0 drops=0 gen2=0
+sample t=00:10:30 ws=423MB private=353MB heap=2MB fps=58.1 p95=19.4ms wafers=97 points=397 errors=0 drops=0 gen2=0
+sample t=00:11:00 ws=423MB private=354MB heap=8MB fps=58.2 p95=19.3ms wafers=102 points=417 errors=0 drops=0 gen2=0
+sample t=00:11:30 ws=423MB private=354MB heap=3MB fps=57.9 p95=19.4ms wafers=107 points=442 errors=0 drops=0 gen2=0
+sample t=00:12:00 ws=422MB private=354MB heap=9MB fps=58.0 p95=19.3ms wafers=111 points=457 errors=0 drops=0 gen2=0
+sample t=00:12:30 ws=423MB private=354MB heap=3MB fps=57.9 p95=19.5ms wafers=116 points=479 errors=0 drops=0 gen2=0
+sample t=00:13:00 ws=428MB private=358MB heap=9MB fps=58.1 p95=19.5ms wafers=121 points=503 errors=0 drops=0 gen2=0
+sample t=00:13:30 ws=423MB private=353MB heap=2MB fps=57.9 p95=19.4ms wafers=125 points=520 errors=0 drops=0 gen2=1
+sample t=00:14:00 ws=423MB private=353MB heap=8MB fps=57.9 p95=19.8ms wafers=130 points=538 errors=0 drops=0 gen2=1
+sample t=00:14:30 ws=423MB private=353MB heap=3MB fps=58.0 p95=19.2ms wafers=134 points=554 errors=0 drops=0 gen2=1
+sample t=00:15:00 ws=423MB private=353MB heap=9MB fps=58.1 p95=19.4ms wafers=139 points=574 errors=0 drops=0 gen2=1
+sample t=00:15:30 ws=424MB private=354MB heap=3MB fps=57.8 p95=19.7ms wafers=144 points=592 errors=0 drops=0 gen2=1
+sample t=00:16:00 ws=424MB private=354MB heap=9MB fps=57.9 p95=19.3ms wafers=148 points=605 errors=0 drops=0 gen2=1
+sample t=00:16:30 ws=424MB private=354MB heap=3MB fps=58.0 p95=19.5ms wafers=153 points=624 errors=0 drops=0 gen2=1
+sample t=00:17:00 ws=424MB private=355MB heap=9MB fps=58.1 p95=19.5ms wafers=157 points=640 errors=0 drops=0 gen2=1
+sample t=00:17:30 ws=424MB private=354MB heap=3MB fps=58.0 p95=19.5ms wafers=162 points=659 errors=0 drops=0 gen2=1
+sample t=00:18:00 ws=424MB private=354MB heap=10MB fps=58.0 p95=19.1ms wafers=167 points=678 errors=0 drops=0 gen2=1
+sample t=00:18:30 ws=424MB private=355MB heap=4MB fps=58.0 p95=19.0ms wafers=171 points=693 errors=0 drops=0 gen2=1
+sample t=00:19:00 ws=424MB private=355MB heap=10MB fps=57.9 p95=19.4ms wafers=176 points=716 errors=0 drops=0 gen2=1
+sample t=00:19:30 ws=429MB private=359MB heap=4MB fps=57.5 p95=19.3ms wafers=181 points=737 errors=0 drops=0 gen2=1
+sample t=00:20:00 ws=427MB private=358MB heap=10MB fps=58.1 p95=19.5ms wafers=185 points=748 errors=0 drops=0 gen2=1
+sample t=00:20:30 ws=428MB private=358MB heap=4MB fps=57.8 p95=18.3ms wafers=190 points=767 errors=0 drops=0 gen2=1
+sample t=00:21:00 ws=428MB private=359MB heap=10MB fps=57.9 p95=18.1ms wafers=194 points=783 errors=0 drops=0 gen2=1
+sample t=00:21:30 ws=428MB private=358MB heap=4MB fps=58.1 p95=18.6ms wafers=199 points=807 errors=0 drops=0 gen2=1
+sample t=00:22:00 ws=428MB private=358MB heap=10MB fps=57.9 p95=19.5ms wafers=204 points=825 errors=0 drops=0 gen2=1
+sample t=00:22:30 ws=427MB private=358MB heap=4MB fps=57.4 p95=19.3ms wafers=208 points=842 errors=0 drops=0 gen2=1
+sample t=00:23:00 ws=427MB private=358MB heap=10MB fps=57.9 p95=19.4ms wafers=213 points=859 errors=0 drops=0 gen2=1
+sample t=00:23:30 ws=427MB private=358MB heap=4MB fps=57.9 p95=19.5ms wafers=218 points=876 errors=0 drops=0 gen2=1
+sample t=00:24:00 ws=427MB private=358MB heap=10MB fps=57.9 p95=19.6ms wafers=222 points=895 errors=0 drops=0 gen2=1
+sample t=00:24:30 ws=428MB private=358MB heap=4MB fps=57.9 p95=19.3ms wafers=227 points=919 errors=0 drops=0 gen2=1
+sample t=00:25:00 ws=428MB private=359MB heap=10MB fps=57.9 p95=19.6ms wafers=231 points=935 errors=0 drops=0 gen2=1
+sample t=00:25:30 ws=428MB private=359MB heap=4MB fps=58.1 p95=19.4ms wafers=236 points=955 errors=0 drops=0 gen2=1
+sample t=00:26:00 ws=428MB private=359MB heap=10MB fps=57.9 p95=19.5ms wafers=241 points=974 errors=0 drops=0 gen2=1
+sample t=00:26:30 ws=428MB private=359MB heap=4MB fps=57.9 p95=19.5ms wafers=245 points=987 errors=0 drops=0 gen2=1
+sample t=00:27:00 ws=428MB private=359MB heap=10MB fps=58.1 p95=19.5ms wafers=250 points=1005 errors=0 drops=0 gen2=1
+sample t=00:27:30 ws=428MB private=358MB heap=5MB fps=57.9 p95=19.6ms wafers=254 points=1022 errors=0 drops=0 gen2=1
+sample t=00:28:00 ws=428MB private=358MB heap=11MB fps=57.9 p95=19.5ms wafers=259 points=1042 errors=0 drops=0 gen2=1
+sample t=00:28:30 ws=428MB private=358MB heap=5MB fps=57.8 p95=19.3ms wafers=264 points=1065 errors=0 drops=0 gen2=1
+sample t=00:29:00 ws=428MB private=358MB heap=11MB fps=58.0 p95=19.7ms wafers=268 points=1080 errors=0 drops=0 gen2=1
+sample t=00:29:30 ws=428MB private=358MB heap=5MB fps=58.2 p95=19.5ms wafers=273 points=1097 errors=0 drops=0 gen2=1
+sample t=00:30:00 ws=428MB private=359MB heap=11MB fps=58.0 p95=19.6ms wafers=278 points=1123 errors=0 drops=0 gen2=1

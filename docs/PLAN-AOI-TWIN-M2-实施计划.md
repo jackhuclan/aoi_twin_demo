@@ -92,7 +92,7 @@ M1 交付的是"静态的壳 + 数据的路"；M2 要让它变成**实时镜像*
 | 任务 | 优先级 | 环境 | 实现方案 | 依赖 | 验证判据 |
 |---|---|---|---|---|---|
 | **TA.17** 回放回归模式 | P1 | 🖥 | `TwinVisualRegression`（`tests/AoiTwin.Regression.Tests`，独立进程）：用 .aotrec 合成录制驱动 TA.4–TA.8，断言「帧数一致 / 末帧位姿接近期望 / 上传队列消费完毕」 | TA.4–TA.8 | 回归套件进 CI 全绿 |
-| **TA.18** 真机窗口 B + 72h 长跑 | P0 | 🏭 | `docs/m2-stability-report.md`；`tools/AoiTwin.Soak` 增 `soak-visual` 模式（带 VM 与渲染循环） | 全部 | 无崩溃/增长 <100MB/帧率衰减 <5% |
+| **TA.18** 真机窗口 B + 72h 长跑 | P0 | 🏭 | ✅ 离线部分：`soak-visual` 模式（带 VM/渲染循环/FX，退出码 + 心跳 + CSV）、`tools/soak-visual.cmd`、`docs/m2-stability-report.md`（判据/流程/判读规则 + 30 分钟自检）；🏭 待办：窗口 B 就地跑 72h 并回填报告 | 全部 | 无崩溃/增长 <100MB/帧率衰减 <5% |
 | **TA.19** 性能报告 | P0 | 🖥/🏭 | `docs/m2-perf-report.md`：NFR-11/12/13/17 逐条；帧内分配用 `GC.GetAllocatedBytesForCurrentThread` 断言 | TA.18 | 报告达标 |
 | **TA.20** 验收与文档 | P0 | 🖥 | `docs/m2-acceptance-checklist.md`；README/PRD/白皮书同步；对 M3 冻结清单 | TA.19 | 评审签字 |
 
@@ -168,6 +168,8 @@ TA.15 跟随 ← TA.4                       TA.18 长跑 ← 全部 → TA.19 �
 | TA.15 跟随模式 | ✅ | `092c994` |
 | TA.16 占位/装载状态 | ✅ | 本阶段提交 |
 | TA.17 回放回归 | ✅ | 本阶段提交（独立工程 `tests/AoiTwin.Regression.Tests`） |
-| TA.9 / TA.18 真机窗口 | 🏭 待现场 | |
+| TA.9 真机窗口 A | 🏭 待现场 | 标定系数入库 + 三链路演示（链路与文件格式已就绪） |
+| TA.18 长跑（工具与脚本） | ✅ | `tools/AoiTwin.Soak soak-visual`（VM + 渲染循环 + FX）、`tools/soak-visual.cmd`、`docs/m2-stability-report.md`（离线 30 分钟自检 + 判读规则） |
+| TA.18 长跑（72h 真机） | 🏭 待窗口 B | 就地跑 `tools\soak-visual.cmd`，报告回填 `docs/m2-stability-report.md` §4/§8 |
 | TA.19 性能报告（离线探针 + 报告） | 🟡 | `docs/m2-perf-report.md`（离线 7 探针全绿；真机/核显帧率与长跑待 TA.18） |
 | TA.20 验收与文档 | ✅ | `docs/m2-acceptance-checklist.md`、README/PRD/白皮书同步、M3 冻结清单（`609a326`） |

@@ -88,8 +88,15 @@
 
 ## 4. 长跑（PRD §7-5）
 
-72h 真机连跑待 TA.18 执行，产出 `docs/m2-stability-report.md`（内存增长 < 100MB、帧率衰减 < 5%、零未处理异常）。
-离线已就绪：`FrameTimeSampler` 滚动窗口统计、`tools/AoiTwin.Soak` 浸泡工具、NFR-15 的线程隔离与异常降级用例。
+| 项 | 状态 | 证据 |
+|---|---|---|
+| 长跑工具（带 VM 与渲染循环） | ✅ | `tools/AoiTwin.Soak soak-visual`（六路同步驱动器 + 报警/粒子 FX + 跟随相机，真实 GLB 装配，WPF 帧循环） |
+| 作业脚本与判读规则 | ✅ | `tools/soak-visual.cmd`、`docs/m2-stability-report.md` §2/§6 |
+| 离线 30 分钟全链路自检 | ✅ | 同报告 §4（证明工具与判据可用、曲线进平台，**不作 72h 结论**） |
+| 72h 真机连跑 | 🟡 待 TA.18 窗口 B | 判据：无崩溃 / 增长 < 100MB / 帧率衰减 < 5%，结果回填 `docs/m2-stability-report.md` §4 与 §8 签字 |
+
+**已知前置风险**：缺陷点云无保留策略（按 `DefectId` 永久累加）。长跑报告已单列 `defectPoints`
+用于归因——若 100MB 被点云顶破，属设计缺口而非泄漏，处置见 `docs/m2-stability-report.md` §7-1。
 
 ---
 
@@ -113,6 +120,7 @@
 |---|---|---|---|
 | A（MS-M2-2） | 标定系数入库、三链路演示 | 设备可达、示教坐标可读 | 🟡 待排期 |
 | B（MS-M2-4） | 72h 长跑、性能调优、验收评审 | 窗口 A 完成 | 🟡 待排期 |
+| ↑ 窗口 B 长跑 | 就地跑 `tools\soak-visual.cmd`（72h） | 作业步骤与巡检表：`docs/m2-stability-report.md` §5 | 🟡 工具已就绪 |
 
 现场作业指导与登记表：`docs/field-collection-runbook.md`、`assets/recordings/manifest.md`。
 
@@ -123,7 +131,7 @@
 | 项 | 实测 | 状态 |
 |---|---|---|
 | 构建 | `dotnet build AoiTwin.slnx -c Release` → 0 警告 0 错误 | ✅ |
-| 测试 | 248 例全绿（Core 77 / Rendering 84 / ViewModel 38 / App 12 / Regression 1 / Adapters 23 / AssetTools 13） | ✅ |
+| 测试 | 255 例全绿（Core 77 / Rendering 85 / ViewModel 42 / App 14 / Regression 1 / Adapters 23 / AssetTools 13） | ✅ |
 | CI | GitHub Actions build + 全量测试，全绿 | ✅ |
 | DI 装配一致性 | `DiCompositionTests` 用**真实容器**解析场景 VM，断言「用户看的就是容器里的 hub」且轴数据按 µm→m 标定落到 VM（锁死 M2 出现过的假接线） | ✅ |
 | 契约 | M1 冻结契约只增不改（`docs/m2-contract-baseline.md` §1 逐条核对） | ✅ |
