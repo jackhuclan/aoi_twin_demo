@@ -383,6 +383,7 @@ public static class RecordingReader
             RecFileFormat.MessageType.StatusEvent => JsonSerializer.Deserialize<Bus.StatusEvent>(payload, Serialization.TwinJson.Options),
             RecFileFormat.MessageType.OpticsEvent => JsonSerializer.Deserialize<Bus.OpticsEvent>(payload, Serialization.TwinJson.Options),
             RecFileFormat.MessageType.WaferResult => JsonSerializer.Deserialize<Bus.WaferResult>(payload, Serialization.TwinJson.Options),
+            RecFileFormat.MessageType.AlertEvent => JsonSerializer.Deserialize<Analytics.AlertEvent>(payload, Serialization.TwinJson.Options),
             _ => null,
         };
 

@@ -8,7 +8,7 @@
   <PropertyGroup>
 
     <!-- 版本：语义化版本，同时作为 AssemblyVersion / FileVersion / NuGet 包版本 -->
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
 
     <!-- 作者与公司 -->
     <Authors>jackhuclan</Authors>
@@ -18,7 +18,7 @@
     <Product>AoiTwin</Product>
     <Description>
       AOI 数字孪生上位机：.NET 10 WPF + HelixToolkit 同进程 3D 场景，
-      设备实时数据总线（RealtimeHub）、录制回放闭环，分期实施（M1：基础建模与数据采集）。
+      设备实时数据总线（RealtimeHub）、录制回放闭环、时序持久化与预测分析，分期实施（M1–M3）。
     </Description>
 
     <!-- 项目地址 -->

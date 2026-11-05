@@ -1,0 +1,44 @@
+{
+  // M3 分析参数（FR-M3-05）。只写想改的字段，其余走代码默认值；整份非法则保留上一份可用配置。
+  // 现场调参流程见 docs/m3-field-verification.md §2、§3；本文件被 AoiTwin.Soak analytics --options 与宿主共用。
+
+  "windowDays": 30,
+  "schedulerMinutes": 5,
+  "repeatSuppressionMinutes": 30,
+
+  // ratedValue 必须按现场光源标称值填写。留 0 会用「窗口内首个样本」当基准，
+  // 衰减曲线会把自己一起抬高 —— 回测会自动变成「永远还够用」。
+  "light": {
+    "ratedValue": 0,
+    "warningFraction": 0.8,
+    "criticalFraction": 0.6,
+    "warningHorizonDays": 7,
+    "criticalHorizonDays": 3,
+    "minSamples": 10
+  },
+
+  // M2 总线只有位置/速度，没有指令-反馈双值；这里的「重复定位偏差」是保持段位置离散度代理量，
+  // 必须用 PLC 双值在真机交叉验证后再定阈值（docs/m3-field-verification.md §3）。
+  "axis": {
+    "sigmaThreshold": 3.0,
+    "driftUmPerDay": 2.0,
+    "holdVelocityUmPerSec": 50,
+    "minSamples": 20
+  },
+
+  "tact": {
+    "degradationPercent": 5.0,
+    "minSamples": 20
+  },
+
+  // 扣分制：满分 100 起步，按证据扣；权重越小越宽容。
+  "healthWeights": {
+    "alarmPenalty": 25,
+    "warningPenalty": 5,
+    "travelPenaltyPerKm": 2,
+    "lightPenaltyPerHour": 0.02,
+    "tactPenaltyPerPercent": 3,
+    "predictorPenaltyWarning": 8,
+    "predictorPenaltyCritical": 20
+  }
+}

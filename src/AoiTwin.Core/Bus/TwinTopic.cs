@@ -10,4 +10,7 @@ public enum TwinTopic
     Status,
     Optics,
     Result,
+
+    /// <summary>M3 追加（只增不改）：分析层预警事件回流，渲染层按普通状态事件消费。</summary>
+    Alert,
 }

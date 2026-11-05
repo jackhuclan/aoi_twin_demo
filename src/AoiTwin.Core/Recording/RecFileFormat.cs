@@ -37,6 +37,9 @@ public static class RecFileFormat
         public const byte StatusEvent = 2;
         public const byte OpticsEvent = 3;
         public const byte WaferResult = 4;
+
+        /// <summary>M3 追加（只增不改）：预警事件可进录制文件，供分析结果复核与回灌。</summary>
+        public const byte AlertEvent = 5;
     }
 
     public static byte TypeIdOf(Bus.ITwinMessage message) => message switch
@@ -45,6 +48,7 @@ public static class RecFileFormat
         Bus.StatusEvent => MessageType.StatusEvent,
         Bus.OpticsEvent => MessageType.OpticsEvent,
         Bus.WaferResult => MessageType.WaferResult,
+        Analytics.AlertEvent => MessageType.AlertEvent,
         _ => throw new ArgumentException($"未登记的录制消息类型: {message.GetType().Name}", nameof(message)),
     };
 
