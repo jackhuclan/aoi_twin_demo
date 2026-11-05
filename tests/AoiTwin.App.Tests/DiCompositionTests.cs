@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using System.Threading;
 using AoiTwin.App;
+using AoiTwin.App.Services;
 using AoiTwin.App.ViewModels;
 using AoiTwin.Core.Bus;
 using AoiTwin.ViewModel;
@@ -74,6 +76,54 @@ public sealed class DiCompositionTests
         var part = visual.GetMotionPart("STAGE");
         visual.RefreshMotion(DateTimeOffset.UtcNow);
         Assert.InRange(part.ReadLatest().Matrix[3], 0.49, 0.51);
+    }
+
+    [Fact]
+    public void Health_page_subscribes_to_container_hub()
+    {
+        RunOnStaThread(() =>
+        {
+            var dir = Path.Combine(Path.GetTempPath(), $"di-health-{Guid.NewGuid():N}");
+            try
+            {
+                var services = new ServiceCollection();
+                services.AddLogging();
+                // 数据落到临时目录：测试不得写用户真实时序库
+                services.AddAoiTwinApp(new AnalyticsRuntimeOptions(
+                    StoreRoot: Path.Combine(dir, "timeseries"),
+                    ExportDirectory: Path.Combine(dir, "exports"),
+                    OptionsFilePath: null,
+                    AutoStart: false));
+
+                using var provider = services.BuildServiceProvider();
+
+                var hub = provider.GetRequiredService<IRealtimeHub>();
+                var health = provider.GetRequiredService<HealthAnalyticsViewModel>();
+
+                // 发到容器 hub 上的一条轴数据，必须出现在健康页的档案里
+                // （否则就是又一个「界面能开、单测全绿、真机没数据」的假接线）
+                hub.Publish(TwinTopic.Motion, new AxisSnapshot("STAGE", "X", 12_000, 0, DateTimeOffset.UtcNow));
+                hub.Publish(TwinTopic.Status, new StatusEvent("STAGE", "E1042", Severity.Alarm, null, DateTimeOffset.UtcNow));
+
+                health.Refresh();
+                var row = Assert.Single(health.Parts);
+                Assert.Equal("STAGE", row.PartId);
+                Assert.True(row.Score < 100, "报警扣分未生效：评分链路可能没读到档案");
+
+                // 落盘也走容器里的同一个 Sink：刷一次再加一条，条数应增加
+                Assert.True(provider.GetRequiredService<AnalyticsRuntime>().Flush() >= 2);
+            }
+            finally
+            {
+                try
+                {
+                    Directory.Delete(dir, recursive: true);
+                }
+                catch (IOException)
+                {
+                }
+            }
+        });
     }
 
     private static void RunOnStaThread(Action action)

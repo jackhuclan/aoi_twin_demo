@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media.Media3D;
 using AoiTwin.Rendering.Lod;
 using System.Windows.Threading;
+using AoiTwin.App.Services;
 using AoiTwin.App.ViewModels;
 using AoiTwin.App.Views;
 using AoiTwin.Core.Bus;
@@ -41,6 +42,17 @@ public class UiSmokeTests
                 var replay = new ReplayViewModel(hub);
                 var recordings = new RecordingManagerViewModel(_ => false);
                 using var monitor = new CollectionMonitorViewModel(hub);
+
+                // 健康分析页（M3）：运行时装配在采集之前，才能收到同一批消息
+                // （临时库，不碰用户 %LOCALAPPDATA%）
+                using var runtime = new AnalyticsRuntime(
+                    hub,
+                    new AnalyticsRuntimeOptions(
+                        StoreRoot: Path.Combine(dir, "timeseries"),
+                        ExportDirectory: Path.Combine(dir, "exports"),
+                        OptionsFilePath: null,
+                        AutoStart: false));
+                using var health = new HealthAnalyticsViewModel(runtime);
 
                 // 采集页（T2.5）：启动四路 Mock → 真实计数/速率/健康状态经绑定刷新
                 Assert.False(monitor.IsRunning);
@@ -303,12 +315,43 @@ public class UiSmokeTests
                 var monitorView = new CollectionMonitorView { DataContext = monitor };
                 ForceLayout(monitorView);
 
-                var main = new MainViewModel(twin, monitor, replay, recordings);
+                var healthView = new HealthAnalyticsView { DataContext = health };
+                ForceLayout(healthView);
+
+                // 健康分析页（M3）：聚合器收到的是上面那轮真实采集
+                health.Refresh();
+                Assert.True(health.HasParts, "健康页未收到任何部件档案（采集→聚合链路断了）");
+                Assert.Contains(health.Parts, p => p.PartId == "STAGE");
+                Assert.All(health.Parts, p => Assert.InRange(p.Score, 0, 100));
+
+                // 调度器随 AutoStart=false 停在"已停止"；起停一轮验证状态映射与手动分析的时间戳
+                Assert.Equal("已停止", health.SchedulerText);
+                runtime.Start();
+                health.Refresh();
+                Assert.StartsWith("运行中", health.SchedulerText);
+                runtime.AnalyzeNow();
+                health.Refresh();
+                Assert.NotEqual("尚未分析", health.LastRunText);
+                runtime.Stop();
+
+                // 导出走 Engineer ACL + 脱敏，落盘文件名带时间戳
+                health.ExportHealthCommand.Execute(null);
+                var exported = Directory.GetFiles(Path.Combine(dir, "exports"), "health-*.csv");
+                Assert.Single(exported);
+                Assert.Contains("partId", File.ReadAllText(exported[0]));
+
+                var main = new MainViewModel(twin, monitor, replay, recordings, health);
                 var window = new global::AoiTwin.App.MainWindow(main);
                 Assert.Same(main, window.DataContext);
 
                 // 3D 场景页为主页签（页序见 MainViewModel）
                 Assert.Equal(0, main.SelectedTabIndex);
+                Assert.Equal(5, FindTabCount(window));
+
+                // 健康页可切入（页序 4），切页不重建 3D 场景
+                main.SelectedTabIndex = 4;
+                ForceLayout(window);
+                Assert.Equal(16, viewport.SceneRoot.Children.Count);
 
                 window.Close();
                 replay.Dispose();
@@ -351,6 +394,42 @@ public class UiSmokeTests
         element.Measure(new Size(1400, 820));
         element.Arrange(new Rect(0, 0, 1400, 820));
         element.UpdateLayout();
+    }
+
+    /// <summary>
+    /// 统计窗口里的顶层页签数（页签增删是「界面接线」的一部分，靠数字锁住页序）。
+    /// 走逻辑树：窗口未 Show 时视觉树还没展开，按视觉树找不到 TabControl。
+    /// </summary>
+    private static int FindTabCount(DependencyObject root)
+    {
+        var tab = FindLogicalDescendant<TabControl>(root);
+        Assert.NotNull(tab);
+        return tab!.Items.Count;
+    }
+
+    private static T? FindLogicalDescendant<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        if (root is T match)
+        {
+            return match;
+        }
+
+        foreach (var child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is not DependencyObject node)
+            {
+                continue;
+            }
+
+            var found = FindLogicalDescendant<T>(node);
+            if (found is not null)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>3 片晶圆的最小录制（每片 2 轴帧 + 1 结果帧）。</summary>

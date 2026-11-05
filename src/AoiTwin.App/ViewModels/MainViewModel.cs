@@ -5,7 +5,7 @@ namespace AoiTwin.App.ViewModels;
 /// <summary>
 /// 主窗口视图模型（T3.2）：持有各功能页视图模型，并负责页间协同
 /// （如录制管理页「回放」→ 切到回放页并加载文件）。业务逻辑一律留在各页视图模型内。
-/// 页序：0 3D 场景（T1.3）· 1 采集监控（T2.5）· 2 回放调试 · 3 录制管理。
+/// 页序：0 3D 场景（T1.3）· 1 采集监控（T2.5）· 2 回放调试 · 3 录制管理 · 4 健康分析（M3）。
 /// </summary>
 public sealed partial class MainViewModel : ObservableObject, IDisposable
 {
@@ -15,12 +15,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         TwinSceneViewModel twin,
         CollectionMonitorViewModel monitor,
         ReplayViewModel replay,
-        RecordingManagerViewModel recordings)
+        RecordingManagerViewModel recordings,
+        HealthAnalyticsViewModel health)
     {
         Twin = twin;
         Monitor = monitor;
         Replay = replay;
         Recordings = recordings;
+        Health = health;
         Recordings.ReplayRequested += OnReplayRequested;
     }
 
@@ -33,6 +35,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public RecordingManagerViewModel Recordings { get; }
 
+    /// <summary>健康分析页（M3：评分、预警、导出的唯一界面出口）。</summary>
+    public HealthAnalyticsViewModel Health { get; }
+
     [ObservableProperty]
     private int _selectedTabIndex;
 
@@ -41,6 +46,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         Recordings.ReplayRequested -= OnReplayRequested;
+        Health.Dispose();
         Monitor.Dispose();
         Replay.Dispose();
     }

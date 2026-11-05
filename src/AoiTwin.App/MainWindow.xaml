@@ -25,7 +25,7 @@
                     </Border>
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="AOI 数字孪生 · 产线复现台" Style="{StaticResource TitleText}" />
-                        <TextBlock Text="M1 基础建模与数据采集 ／ 录制回放闭环"
+                        <TextBlock Text="M1–M3 ／ 实时映射 · 回放闭环 · 预测分析"
                                    Style="{StaticResource CaptionText}" Margin="0,1,0,0" />
                     </StackPanel>
                 </StackPanel>
@@ -49,6 +49,9 @@
             </TabItem>
             <TabItem Header="录制管理">
                 <views:RecordingManagerView DataContext="{Binding Recordings}" />
+            </TabItem>
+            <TabItem Header="健康分析">
+                <views:HealthAnalyticsView DataContext="{Binding Health}" />
             </TabItem>
         </TabControl>
     </Grid>
