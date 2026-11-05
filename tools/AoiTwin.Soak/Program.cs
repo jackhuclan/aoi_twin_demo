@@ -49,10 +49,25 @@ internal static class Program
             return RunVisualSoak(args);
         }
 
+        if (args.Length >= 4 && args[0] == "analytics" && int.TryParse(args[1], out var days) && days > 0)
+        {
+            string? optionsPath = null;
+            for (var i = 4; i < args.Length; i++)
+            {
+                if (args[i] == "--options" && i + 1 < args.Length)
+                {
+                    optionsPath = args[++i];
+                }
+            }
+
+            return AnalyticsSoak.Run(days, args[2], args[3], optionsPath);
+        }
+
         Console.Error.WriteLine("用法:");
         Console.Error.WriteLine("  AoiTwin.Soak soak <minutes> <recordDir> <reportPath>");
         Console.Error.WriteLine("  AoiTwin.Soak bench <catalogPath> <assetsRoot> <reportPath>");
         Console.Error.WriteLine("  AoiTwin.Soak soak-visual <minutes> <reportPath> [选项]");
+        Console.Error.WriteLine("  AoiTwin.Soak analytics <days> <storeRoot> <reportPath> [--options <json>]   （M3 离线加速：写入→治理→分析→导出）");
         Console.Error.WriteLine("    选项：--assets <dir>       资产根（缺省向上查找 assets/part-catalog.json）");
         Console.Error.WriteLine("          --wafer-sec <6.5>    晶圆结果间隔秒（现场节拍，改小等于放大点云增长）");
         Console.Error.WriteLine("          --defects <4>        每片缺陷数均值");
@@ -60,6 +75,7 @@ internal static class Program
         Console.Error.WriteLine("          --visible            窗口可见（默认移到屏幕外）");
         Console.Error.WriteLine("          --sample-sec <30>    采样周期");
         Console.Error.WriteLine("          --warmup-min <5>     预热时长（超过计划时长 10% 时按 10% 收）");
+        Console.Error.WriteLine("          --options <json>     分析参数文件（缺省用代码默认值，例：assets/analytics-options.json）");
         return 2;
     }
 
