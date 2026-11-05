@@ -17,6 +17,15 @@ public enum FxKind
 
     /// <summary>传输粒子流（FR-M2-12）。</summary>
     TransportParticles = 2,
+
+    /// <summary>M3 追加（只增不改）：预警状态色升级 + 脉冲（FR-M3-09）。</summary>
+    AlertState = 3,
+
+    /// <summary>M3 追加：缺陷密度热力晕染（FR-M3-13）。</summary>
+    DefectHeatmap = 4,
+
+    /// <summary>M3 追加：UI3D KPI 标注（FR-M3-11；2D 叠加层实现，枚举值保留供契约对齐）。</summary>
+    KpiBadge = 5,
 }
 
 /// <summary>

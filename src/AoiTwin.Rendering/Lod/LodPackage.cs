@@ -161,21 +161,36 @@ public static class LodMerger
     }
 }
 
-/// <summary>LOD 切换阈值（米）：NearDistance 内用 LOD1，超出 FarDistance 用 LOD2，中间是回滞带。</summary>
+/// <summary>
+/// LOD 切换阈值（米）：CloseDistance 内用 L0（若可用），NearDistance 内用 LOD1，
+/// 超出 FarDistance 用 LOD2，中间是回滞带。
+/// </summary>
 public sealed record LodThresholds(double NearDistance = 4.4, double Hysteresis = 0.6)
 {
     public double FarDistance => NearDistance + Hysteresis;
+
+    /// <summary>L0 特写档触发距离（M3）：相机贴到部件跟前才启用。</summary>
+    public double CloseDistance { get; init; } = 1.6;
+
+    /// <summary>L0→L1 的回滞（比 L1/L2 小：特写是主动行为，不该拖泥带水）。</summary>
+    public double CloseHysteresis => Hysteresis / 2;
 }
 
 /// <summary>
-/// LOD 档位选择器（T1.6）：按相机到场景包围盒的距离切换 LOD1/LOD2。
+/// LOD 档位选择器（T1.6 / TB.11）：按相机到场景包围盒的距离切换 LOD0/LOD1/LOD2。
 ///
 /// 回滞（±Hysteresis）是防闪烁的关键：单阈值会在边界距离上反复切换；
 /// 两个阈值之间保持当前档位，操作员缓慢平移时档位稳定。
+///
+/// L0 是「能力开关」：<c>supportsClose=false</c>（默认）时行为与 M1 完全一致——
+/// 资产包没有 L0 时不可能凭空出现特写档，这也保证 M2 的既有回归不因 M3 改动而变。
 /// </summary>
-public sealed class LodLevelSelector(LodThresholds? thresholds = null)
+public sealed class LodLevelSelector(LodThresholds? thresholds = null, bool supportsClose = false)
 {
     public LodThresholds Thresholds { get; } = thresholds ?? new LodThresholds();
+
+    /// <summary>L0 资产是否可用（由 LodPackage.Close 是否存在决定）。</summary>
+    public bool SupportsClose { get; } = supportsClose;
 
     public LodLevel Current { get; private set; } = LodLevel.L1;
 
@@ -183,6 +198,25 @@ public sealed class LodLevelSelector(LodThresholds? thresholds = null)
     public bool Evaluate(double distanceToScene)
     {
         var previous = Current;
+
+        if (SupportsClose)
+        {
+            if (Current != LodLevel.L0 && distanceToScene < Thresholds.CloseDistance)
+            {
+                Current = LodLevel.L0;
+                return true;
+            }
+
+            if (Current == LodLevel.L0)
+            {
+                if (distanceToScene <= Thresholds.CloseDistance + Thresholds.CloseHysteresis)
+                {
+                    return false; // L0 回滞带内：保持特写
+                }
+
+                Current = LodLevel.L1;
+            }
+        }
 
         if (Current == LodLevel.L1 && distanceToScene > Thresholds.FarDistance)
         {
@@ -214,16 +248,32 @@ public sealed class LodLevelSelector(LodThresholds? thresholds = null)
 }
 
 /// <summary>
-/// 两档场景包（T1.6）：LOD1 全保真 + LOD2 合批代理一次加载。
-/// 点选始终用 <see cref="PickParts"/>（LOD1 几何），渲染按当前档位二选一。
+/// LOD 场景包（T1.6 / TB.11）：LOD1 全保真 + LOD2 合批代理一次加载，
+/// M3 追加可选 LOD0 特写档（<paramref name="Close"/> 为 null 表示资产未就绪，选择器自动退化为两档）。
+/// 点选始终用 <see cref="PickParts"/>（LOD1 几何），渲染按当前档位选择。
 /// </summary>
-public sealed record LodPackage(LoadedScene Near, LoadedScene Far, IReadOnlyList<LodProxyGroup> Proxies)
+public sealed record LodPackage(
+    LoadedScene Near,
+    LoadedScene Far,
+    IReadOnlyList<LodProxyGroup> Proxies,
+    LoadedScene? Close = null)
 {
     /// <summary>点选与信息面板使用的全保真部件（LOD1）。</summary>
     public IReadOnlyList<LoadedPart> PickParts => Near.Parts;
 
-    public int MeshCount(LodLevel level)
-        => level == LodLevel.L1 ? Near.Parts.Count : Proxies.Count;
+    /// <summary>L0 特写档是否可用（决定 <see cref="LodLevelSelector.SupportsClose"/>）。</summary>
+    public bool HasClose => Close is not null;
+
+    public int MeshCount(LodLevel level) => level switch
+    {
+        LodLevel.L0 => Close?.Parts.Count ?? Near.Parts.Count,
+        LodLevel.L1 => Near.Parts.Count,
+        _ => Proxies.Count,
+    };
+
+    /// <summary>创建与当前档位匹配的档位选择器（L0 不可用时自动两档语义）。</summary>
+    public LodLevelSelector CreateSelector(LodThresholds? thresholds = null)
+        => new(thresholds, supportsClose: HasClose);
 
     /// <summary>整机包围盒（LOD1 几何并集，场景坐标：米、Z 向上）。</summary>
     public Rect3D SceneBounds { get; } = Union(Near.Parts.Select(p => p.Geometry.Bounds));

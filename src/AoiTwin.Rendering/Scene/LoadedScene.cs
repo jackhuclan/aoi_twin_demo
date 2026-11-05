@@ -7,6 +7,9 @@ namespace AoiTwin.Rendering.Scene;
 /// <summary>LOD 档位（docs/asset-spec.md §2）。</summary>
 public enum LodLevel
 {
+    /// <summary>L0：特写档（M3 追加，只增不改）。仅高频钻取部件（相机/光源/载台）有 L0 资产，缺资产时回退 L1。</summary>
+    L0 = 0,
+
     /// <summary>L1：装配中模（默认）。</summary>
     L1 = 1,
 
