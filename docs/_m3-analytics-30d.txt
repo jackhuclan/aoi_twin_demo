@@ -1,0 +1,34 @@
+mode=analytics
+started=2026-11-05 02:01:23Z
+days=30
+storeRoot=C:\Users\Megarobo\AppData\Local\Temp\aoi-m3-store2
+optionsSource=assets/analytics-options.json
+optionsError=(none)
+options.light=rated=0|warn=0.8|horizon=7d|min=10
+options.axis=sigma=3|drift=2um/d|hold=50um/s
+options.tact=5%
+recordsPublished=2160
+recordsWritten=2160
+sinkHealthy=True
+sinkLastError=(none)
+partitions=31
+storeBytes=468984
+prunedBytes=0
+profiles=3
+healthScored=2
+health.STAGE=100.0/Good
+health.WAFER_CURRENT=100.0/Good
+predictor.light-decay.findings=1
+predictor.light-decay.error=(none)
+predictor.axis-wear.findings=0
+predictor.axis-wear.error=(none)
+predictor.tact-trend.findings=1
+predictor.tact-trend.error=(none)
+finding.LightDecay.LIGHT_RING=Warning|score=44.7|horizon=4|通道 0 预计 3.9 天后跌至预警线（额定 80%），R²=1.00
+finding.TactDegradation.ST01=Warning|score=37.0|horizon=-|站点 ST01 节拍劣化 7.4%（6.06s → 6.51s）
+export.health=docs/_m3-analytics-30d.health.csv rows=2 bytes=94
+export.alerts=docs/_m3-analytics-30d.alerts.json rows=2 bytes=690
+elapsedMs=504
+partitionsOk=True
+analysisOk=True
+result=PASS

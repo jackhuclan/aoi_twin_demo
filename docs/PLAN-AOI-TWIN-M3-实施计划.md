@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |---|---|
 | 文档编号 | PLAN-AOI-TWIN-M3 |
-| 版本 / 状态 | v1.0 / 待评审 |
+| 版本 / 状态 | v1.1 / 离线部分已交付（真机项待窗口）；进度见 §6 |
 | 上游文档 | PRD-AOI-TWIN-M3 · PLAN-AOI-TWIN-M2（承接其 §4 跨期协调节点） |
 | 工作方法 | 同前两期：分析层 TDD + 渲染层验证清单 + 数据回测 |
 | 计时基准 | T = M2 验收签字日（协调节点 ③ 使 Sink 采集自 M2-W10 起已在运行） |
@@ -110,3 +110,48 @@
 | 合批后渲染回归 | TB.12 A/B 不达标或出现渲染异常 | 合批按静态分组分批实施，每组独立 A/B，可单独回退 |
 | 30 天长稳跨验收期 | TB.18 与 TB.20 排期冲突 | 长稳 W7 启动并行 S3；验收评审以"长稳中期数据 + 承诺收尾"先行、最终数据补交 |
 | 分析层故障影响实时链路 | TB.0/TB.5 异常扩散 | Sink 与分析均为 Hub 普通订阅方 + 异常边界隔离（NFR-22 设计红线，TDD 断言固化） |
+
+---
+
+## 6. 执行进度
+
+状态图例：✅ 完成（有自动化证据）｜🏭 待真机/资产｜🟡 部分
+
+| 任务 | 状态 | 产出 / 证据 |
+|---|---|---|
+| TB.0 持久化 Sink | ✅ | `Core/Persistence/{TimeSeriesRecord,ITimeSeriesStore,FileTimeSeriesStore,PersistenceSink}.cs`；`PersistenceTests` 4 例（含写失败不阻塞、缓冲丢最旧） |
+| TB.1 录制回灌 | ✅ | `Core/Persistence/RecImporter.cs`；`.aotrec` 逐帧 CRC 后转记录，往返一致 |
+| TB.2 存储治理 | ✅ | `Core/Persistence/StorageGovernor.cs`；正常清理 + 水位应急清理 2 例 |
+| TB.3 历史回灌 3D | ✅ | `Core/Persistence/TimeSeriesReplayEngine.cs`；顺序/时间戳重映射，走同一 Hub 注入通道 |
+| TB.4 健康档案 | ✅ | `Core/Persistence/PartHealth.cs`；行程/报警/亮灯时长/节拍（Welford），乱序安全 |
+| TB.5 插件框架 | ✅ | `Core/Analytics/{AlertContracts,IAnalyticsContext,AlertScheduler,PluginLoader}.cs`、`TwinTopic.Alert`；隔离 + 签名默认全拒 |
+| TB.6 健康评分 | ✅ | `Core/Analytics/HealthScorer.cs`（扣分制 + 四档）+ `AnalyticsOptionsFile`（权重/阈值文件源，坏配置保旧值） |
+| TB.7 光源衰减 | ✅ | `Predictors.LightDecayPredictor`；**回测提前量 7 天**（`HorizonDays ∈ [6,7]`）、R² 与区间 |
+| TB.8 轴磨损 | ✅ 代码 / 🏭 口径 | `Predictors.AxisWearPredictor`；代理量需真机 PLC 双值交叉验证（验证清单 §3） |
+| TB.9 节拍劣化 | ✅ 代码 / 🏭 站点来源 | `Predictors.TactTrendAnalyzer` + `Bottlenecks(top3)`；站点目前由 `WaferId` 前缀解析 |
+| TB.10 预警回流 3D | ✅ | `Rendering/Fx/AlertStateFx.cs` + `AlertScheduler`（去重/升级即发/Info 恢复） |
+| TB.11 LOD0 特写档 | ✅ 代码 / 🏭 资产 | `LodLevel.L0`（只追加）+ `LodLevelSelector(supportsClose)` 三档回滞；资产缺失自动退两档 |
+| TB.12 静态合批 | ✅ | `Rendering/Lod/StaticBatcher.cs`；按（运动组, 颜色）合并，UV/法线保留 |
+| TB.13 上传分帧 | ✅ | `Rendering/Upload/UploadBudgetGate.cs`；4MB/帧、优先级、同 Key 覆盖、超大独占 |
+| TB.14 缺陷热力 | ✅ | `Rendering/Fx/DefectHeatmapFx.cs`；密度 8 档合并（≤8 Draw Call）、可开关 |
+| TB.15 UI3D KPI | ✅ | `Rendering/Overlay/KpiBadgeOverlay.cs` + `WorldToScreenProjector`（纯数学可测、1s 节流） |
+| TB.16 对外导出 | ✅ | `Core/Analytics/Export/AnalyticsExportService.cs`；CSV/JSON 同源、三角色 ACL、脱敏、原子写（4 例） |
+| TB.17 扩展性演示 | ✅ | `ExtensibilityTests`：新增模型零改动 + 新增数据源（`StatusEvent` 自定义 `EventCode`）+ 结构断言（Core 不引用 Rendering/WPF） |
+| TB.18 30 天长稳 | ✅ 离线 / 🏭 真机 | `tools/AoiTwin.Soak analytics`（2160 条 / 31 分区 / 504ms，result=PASS）+ `SoakSimulationTests`（内存 < 64MB） |
+| TB.19 文档收口 | ✅ 待评审 | `docs/m3-implementation-status.md`、`m3-field-verification.md`、`m3-plugin-guide.md`、白皮书 §9、README |
+| TB.20 验收评审 | ✅ 待签字 | `docs/m3-acceptance-checklist.md`（DoD 七项，实现层全绿） |
+
+**阶段退出条件对照**
+
+| 阶段 | 退出条件 | 现状 |
+|---|---|---|
+| S1 | 30 天写入方案验证 + 历史回灌复现 | ✅ 离线通过（`analytics 30` + 回灌往返用例） |
+| S2 | 回测提前量 ≥7 天 + 预警 3D 联动演示 | ✅ 提前量达标；3D 联动有颜色映射与调度用例，现场演示待窗口 |
+| S3 | NFR-19/20 A/B 达标 | 🟡 合批/上传离线达标；LOD0 帧率待资产与基准机 |
+| S4 | 长稳 + 文档 + 验收签字 | 🟡 离线长稳与文档完成；真机 30 天与签字待窗口 |
+
+**三处与计划的偏离**（已决定，评审需知悉；详见 `docs/m3-implementation-status.md` §3）：
+存储由 SQLite 改 JSONL 按天分区（`ITimeSeriesStore` 可换回）、轴磨损用保持段离散度作代理量、
+LOD0 只做档位与选择器（PBR 资产属外部交付）。
+
+**版本**：0.3.0（`Directory.Build.props`）。
